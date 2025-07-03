@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <title>french-bulldog-face</title>
+  <!-- Head -->
+  <ellipse cx="64" cy="70" rx="35" ry="30" fill="#f4e4bc"/>
+  
+  <!-- Ears -->
+  <ellipse cx="45" cy="50" rx="8" ry="15" fill="#d4c4a8"/>
+  <ellipse cx="83" cy="50" rx="8" ry="15" fill="#d4c4a8"/>
+  <ellipse cx="45" cy="48" rx="4" ry="8" fill="#f4e4bc"/>
+  <ellipse cx="83" cy="48" rx="4" ry="8" fill="#f4e4bc"/>
+  
+  <!-- Eyes -->
+  <circle cx="54" cy="65" r="6" fill="#2c2c2c"/>
+  <circle cx="74" cy="65" r="6" fill="#2c2c2c"/>
+  <circle cx="55" cy="63" r="2" fill="#ffffff"/>
+  <circle cx="75" cy="63" r="2" fill="#ffffff"/>
+  
+  <!-- Snout -->
+  <ellipse cx="64" cy="78" rx="8" ry="6" fill="#e4d4a8"/>
+  
+  <!-- Nose -->
+  <ellipse cx="64" cy="76" rx="3" ry="2" fill="#2c2c2c"/>
+  
+  <!-- Mouth -->
+  <path d="M 64 80 Q 58 85 52 82" fill="none" stroke="#2c2c2c" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 64 80 Q 70 85 76 82" fill="none" stroke="#2c2c2c" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Wrinkles -->
+  <path d="M 50 60 Q 56 58 62 60" fill="none" stroke="#d4c4a8" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M 66 60 Q 72 58 78 60" fill="none" stroke="#d4c4a8" stroke-width="1.5" stroke-linecap="round"/>
+</svg>
