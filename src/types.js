@@ -54,3 +54,12 @@
  * @property {string} colors.textHighlight - Highlighted text color
  * @property {string} colors.shadow - Shadow color
  */
+
+/**
+ * @typedef {Object} SavedImage
+ * @property {string} id - Unique image ID
+ * @property {string} prompt - The prompt used to generate the image
+ * @property {string} url - Original URL from the API
+ * @property {number} timestamp - When the image was saved
+ * @property {string} filename - Generated filename
+ */

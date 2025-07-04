@@ -78,9 +78,7 @@ function createWindowManager() {
 
 			// Restore windows
 			for (const savedWindow of state.windows) {
-				console.log(`Restoring window: ${savedWindow.id}`);
 				const creator = windowCreators.get(savedWindow.id);
-				console.log(creator)
 				if (creator) {
 					console.log()
 					// Recreate the window using its creator function
