@@ -23,7 +23,6 @@
     imageManager.cleanupImageUrls();
   });
 
-
   /**
    * Delete a saved image from storage
    * Removes both the blob and metadata, then refreshes the saved images list
@@ -47,6 +46,22 @@
       error = "";
     }
   }
+
+  /**
+   * Open full-size preview window for a saved image
+   * @param {string} imageId - The ID of the saved image
+   * @param {SavedImage} savedImage - The saved image metadata
+   */
+  async function openImagePreview(imageId, savedImage) {
+    const objectURL = await imageManager.getImageUrl(imageId);
+    if (objectURL) {
+      await imageManager.previewImage(objectURL, {
+        imageId,
+        prompt: savedImage.prompt,
+        title: savedImage.prompt.length > 30 ? `${savedImage.prompt.substring(0, 30)}...` : savedImage.prompt,
+      });
+    }
+  }
 </script>
 
 <div class="p-1 border-t border-gray-500 h-full">
@@ -57,7 +72,13 @@
         <button
           class="w-full h-30 bg-gray-200 border border-inset border-gray-500 flex items-center justify-center cursor-pointer text-2xl p-0 font-sans hover:bg-gray-300"
           onclick={() => loadSavedImagePreview(savedImage.id)}
-          aria-label="Load saved image: {savedImage.prompt.substring(0, 50)}"
+          ondblclick={() => openImagePreview(savedImage.id, savedImage)}
+          oncontextmenu={(e) => {
+            e.preventDefault();
+            openImagePreview(savedImage.id, savedImage);
+          }}
+          aria-label="Click to load, double-click to preview full size: {savedImage.prompt.substring(0, 50)}"
+          title="Click: Load to main view | Double-click: Open full size preview"
         >
           <div>
             <img src={imageManager.imageUrls[savedImage.id] || "favicon.svg"} alt="Saved generation thumbnail" class="" />
@@ -71,16 +92,23 @@
             {new Date(savedImage.timestamp).toLocaleDateString()}
           </div>
 
-          <div class="flex gap-2">
+          <div class="flex gap-1">
             <button
-              class="w-4 h-4 border border-outset border-gray-300 bg-gray-300 text-black text-base cursor-pointer flex items-center justify-center p-0 leading-none hover:bg-gray-400 active:border-inset"
+              class="w-4 h-4 border border-outset border-gray-300 bg-gray-300 text-black text-xs cursor-pointer flex items-center justify-center p-0 leading-none hover:bg-blue-200 active:border-inset"
+              onclick={() => openImagePreview(savedImage.id, savedImage)}
+              title="Preview Full Size"
+            >
+              👁
+            </button>
+            <button
+              class="w-4 h-4 border border-outset border-gray-300 bg-gray-300 text-black text-xs cursor-pointer flex items-center justify-center p-0 leading-none hover:bg-gray-400 active:border-inset"
               onclick={() => imageManager.downloadImage(savedImage.id, savedImage.filename)}
               title="Download"
             >
               ⬇
             </button>
             <button
-              class="w-4 h-4 border border-outset border-gray-300 bg-gray-300 text-black text-base cursor-pointer flex items-center justify-center p-0 leading-none hover:bg-red-200 active:border-inset"
+              class="w-4 h-4 border border-outset border-gray-300 bg-gray-300 text-black text-xs cursor-pointer flex items-center justify-center p-0 leading-none hover:bg-red-200 active:border-inset"
               onclick={() => deleteSavedImage(savedImage.id)}
               title="Delete"
             >

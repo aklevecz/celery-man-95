@@ -143,6 +143,25 @@ function createImageManager() {
   // Auto-load saved images on initialization
   loadSavedImages();
 
+  /**
+   * Open image preview window
+   * @param {string} imageUrl - URL of the image to preview
+   * @param {Object} [options={}] - Preview options
+   * @param {string} [options.imageId] - Optional ID of saved image
+   * @param {string} [options.title] - Optional window title
+   * @param {string} [options.prompt] - Optional prompt text for title
+   */
+  async function previewImage(imageUrl, options = {}) {
+    const { imageId, title, prompt } = options;
+    const { default: ImagePreviewController } = await import('$lib/windows/image-preview/ImagePreviewController.svelte.js');
+    ImagePreviewController.openImagePreviewWindow({
+      imageUrl,
+      imageId,
+      title,
+      prompt
+    });
+  }
+
   return {
     get savedImages() {
       return savedImages;
@@ -166,6 +185,7 @@ function createImageManager() {
     generateAllImageUrls,
     cleanupImageUrls,
     downloadImageFromUrl,
+    previewImage,
   };
 }
 

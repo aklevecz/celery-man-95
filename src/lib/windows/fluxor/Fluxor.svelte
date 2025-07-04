@@ -170,7 +170,13 @@
   <div class="flex-1 overflow-auto flex flex-col">
     {#if generatedImage}
       <div class="p-4 text-center flex items-center justify-center">
-        <img src={generatedImage} alt="" class="max-w-full max-h-75 border border-gray-500 shadow-lg bg-white" />
+        <button 
+          class="border-0 p-0 bg-transparent cursor-pointer"
+          onclick={() => generatedImage && imageManager.previewImage(generatedImage, { prompt, title: "Generated Image" })}
+          title="Click to view full size"
+        >
+          <img src={generatedImage} alt="" class="max-w-full max-h-75 border border-gray-500 shadow-lg bg-white hover:opacity-90 transition-opacity" />
+        </button>
       </div>
     {/if}
   </div>
