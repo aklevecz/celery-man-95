@@ -4,9 +4,10 @@ import { fal } from "@fal-ai/client";
 export const models = {
   flux_pro_1_1_ultra: "fal-ai/flux-pro/v1.1-ultra",
   flux_kontext_pro: "fal-ai/flux-pro/kontext",
+  flux_kontext_pro_text_to_image: "fal-ai/flux-pro/kontext/text-to-image",
 };
 
-/** @typedef {"fal-ai/flux-pro/v1.1-ultra" | "fal-ai/flux-pro/kontext"} Model */
+/** @typedef {"fal-ai/flux-pro/v1.1-ultra" | "fal-ai/flux-pro/kontext" | "fal-ai/flux-pro/kontext/text-to-image"} Model */
 
 
 
@@ -39,24 +40,55 @@ const createFalApi = () => {
    * @returns {Promise<string | null>} - The URL of the generated image, or null on failure
    */
   async function generateFluxImage(model, options) {
-    const { prompt, ...otherOptions } = options;
-    const result = await fal.subscribe(model, {
-      input: {
-        prompt,
-        ...otherOptions,
-      },
+    const { prompt, image_url, ...otherOptions } = options;
+    console.log(image_url)
+    // For FLUX Kontext, choose the correct endpoint based on whether image_url is provided
+    let actualModel = model;
+    if (model === models.flux_kontext_pro) {
+      if (image_url) {
+        // Image-to-image: use base kontext endpoint
+        actualModel = models.flux_kontext_pro;
+      } else {
+        // Text-to-image: use text-to-image endpoint
+        actualModel = models.flux_kontext_pro_text_to_image;
+      }
+    }
+    console.log(actualModel)
+    // Prepare input parameters
+    const inputParams = { prompt, ...otherOptions };
+    if (image_url) {
+      inputParams.image_url = image_url;
+    }
+    
+    // Debug logging
+    console.log('🔧 Debug: Original Model:', model);
+    console.log('🔧 Debug: Actual Model:', actualModel);
+    console.log('🔧 Debug: Input Params:', inputParams);
+    
+    const result = await fal.subscribe(actualModel, {
+      input: inputParams,
       logs: true,
       onQueueUpdate: (update) => {
-        console.log(update);
+        console.log('📡 Queue Update:', update);
         if (update.status === "IN_PROGRESS") {
           update.logs.map((log) => log.message).forEach(console.log);
         }
       },
     });
+    
+    // Debug the full result
+    console.log('🎯 Final Result:', result);
+    
 	// Could be multiple images
-    if (result.data.images) {
+    if (result.data && result.data.images) {
       return result.data.images[0].url;
     }
+    
+    // Check for errors in the response
+    if (result.data && result.data.error) {
+      throw new Error(`API Error: ${result.data.error}`);
+    }
+    
     return null;
   }
 

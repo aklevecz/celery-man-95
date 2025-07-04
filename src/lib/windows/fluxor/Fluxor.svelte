@@ -164,9 +164,41 @@
         seed: seed.trim() ? parseInt(seed) : Math.floor(Math.random() * 1000000),
       };
 
+      console.log(referenceImageUrl)
+
       // Add image_url if reference image is provided (works with any model that supports it)
       if (referenceImageUrl) {
-        options.image_url = referenceImageUrl;
+        let imageData = referenceImageUrl;
+        
+        if (referenceImageUrl.startsWith('blob:')) {
+          // Convert blob URL to data URI
+          try {
+            const response = await fetch(referenceImageUrl);
+            const blob = await response.blob();
+            const dataUri = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const result = reader.result;
+                if (typeof result === 'string') {
+                  resolve(result);
+                } else {
+                  resolve('');
+                }
+              };
+              reader.readAsDataURL(blob);
+            });
+            imageData = dataUri;
+          } catch (err) {
+            error = "Failed to convert image for API";
+            console.error("Blob conversion error:", err);
+            return;
+          }
+        }
+        
+        // Add image_url to options (need to cast to any to avoid TypeScript error)
+        /** @type {any} */
+        const optionsWithImage = options;
+        optionsWithImage.image_url = imageData;
       }
 
       const imageUrl = await falApi.generateFluxImage(model, options);
