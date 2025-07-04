@@ -89,8 +89,14 @@
 
   /**
    * Clear selected reference image
+   * @param {Event} [event] - Click event to prevent bubbling
    */
-  function clearReferenceImage() {
+  function clearReferenceImage(event) {
+    // Prevent the click from bubbling up to the parent dropzone
+    if (event) {
+      event.stopPropagation();
+    }
+    
     selectedFile = null;
     referenceImageUrl = null;
     // Reset file input
@@ -260,7 +266,7 @@
             <img src={referenceImageUrl} alt="Reference" class="max-w-full max-h-32 mx-auto border border-gray-500 rounded" />
             <button 
               class="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white text-xs rounded-full hover:bg-red-600 flex items-center justify-center"
-              onclick={clearReferenceImage}
+              onclick={(event) => clearReferenceImage(event)}
               title="Remove image"
             >
               ×

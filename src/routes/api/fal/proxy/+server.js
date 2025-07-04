@@ -72,16 +72,28 @@ async function handleRequest(method, request, url) {
     // Prepare headers for forwarding
     const forwardHeaders = new Headers();
     
+    // Check for client-provided API key
+    const clientApiKey = request.headers.get('x-fal-client-key');
+    
     // Copy relevant headers (exclude host and proxy-specific headers)
-    const excludedHeaders = ['host', 'x-fal-target-url', 'authorization', 'cookie'];
+    const excludedHeaders = ['host', 'x-fal-target-url', 'authorization', 'cookie', 'x-fal-client-key'];
     for (const [key, value] of request.headers.entries()) {
       if (!excludedHeaders.includes(key.toLowerCase())) {
         forwardHeaders.set(key, value);
       }
     }
     
+    // Use client API key if provided, otherwise use server key
+    let apiKeyToUse = FAL_KEY;
+    if (clientApiKey && clientApiKey.trim()) {
+      apiKeyToUse = clientApiKey.trim();
+      console.log("Using client-provided API key");
+    } else if (!FAL_KEY) {
+      throw error(500, 'No API key available - configure in settings or server environment');
+    }
+    
     // Add fal.ai API key
-    forwardHeaders.set('Authorization', `Key ${FAL_KEY}`);
+    forwardHeaders.set('Authorization', `Key ${apiKeyToUse}`);
     
     // Ensure content-type is set for POST requests
     if (method === 'POST' && !forwardHeaders.has('content-type')) {
