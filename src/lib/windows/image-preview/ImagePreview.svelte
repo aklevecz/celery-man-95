@@ -1,8 +1,24 @@
 <script>
   import { imageManager } from "$lib/image-manager.svelte.js";
+  import { onMount, onDestroy } from "svelte";
 
   /** @type {{ imageUrl: string, imageId?: string, title?: string }} */
   let { imageUrl, imageId, title = "Image Preview" } = $props();
+
+  // Hold a reference to keep the URL alive while preview is open
+  onMount(() => {
+    if (imageId) {
+      // Get a reference to the URL to prevent it from being cleaned up
+      imageManager.getImageUrl(imageId);
+    }
+  });
+
+  onDestroy(() => {
+    if (imageId) {
+      // Release our reference when preview closes
+      imageManager.releaseImageUrl(imageId);
+    }
+  });
 
   function downloadImage() {
     if (imageId) {

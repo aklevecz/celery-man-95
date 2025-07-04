@@ -1,7 +1,9 @@
 <script>
-  import falApi from "$lib/fal-api.svelte.js";
+  import falApi, { models } from "$lib/fal-api.svelte.js";
   import { imageManager } from "$lib/image-manager.svelte.js";
 
+  /** @type {Model} */
+  let model = $state(models.flux_kontext_pro)
   let prompt = $state("");
   let seed = $state("");
   let aspectRatio = $state("16:9");
@@ -39,7 +41,7 @@
       };
 
 
-      const imageUrl = await falApi.generateFluxImage(options);
+      const imageUrl = await falApi.generateFluxImage(model, options);
       if (imageUrl) {
         generatedImage = imageUrl;
         await imageManager.saveImage(imageUrl, prompt);

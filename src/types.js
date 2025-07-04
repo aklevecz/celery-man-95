@@ -63,3 +63,5 @@
  * @property {number} timestamp - When the image was saved
  * @property {string} filename - Generated filename
  */
+
+/** @typedef {"fal-ai/flux-pro/v1.1-ultra" | "fal-ai/flux-pro/kontext"} Model */

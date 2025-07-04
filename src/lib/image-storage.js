@@ -210,22 +210,28 @@ async function deleteSavedImage(imageId) {
  * @returns {Promise<boolean>}
  */
 async function downloadSavedImage(imageId, filename) {
+  /** @type {string | null} */
+  let tempObjectURL = null;
   try {
-    const objectURL = await getImageObjectURL(imageId);
-    if (!objectURL) return false;
+    // Create a temporary Object URL just for downloading
+    tempObjectURL = await getImageObjectURL(imageId);
+    if (!tempObjectURL) return false;
 
     const link = document.createElement("a");
-    link.href = objectURL;
+    link.href = tempObjectURL;
     link.download = filename;
     link.click();
-
-    // Clean up object URL
-    setTimeout(() => URL.revokeObjectURL(objectURL), 100);
 
     return true;
   } catch (error) {
     console.error("Failed to download saved image:", error);
     return false;
+  } finally {
+    // Always clean up the temporary Object URL
+    if (tempObjectURL && typeof tempObjectURL === "string") {
+      // @ts-ignore
+      setTimeout(() => URL.revokeObjectURL(tempObjectURL), 100);
+    }
   }
 }
 

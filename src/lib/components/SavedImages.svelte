@@ -3,24 +3,71 @@
   import { onDestroy } from "svelte";
   let { savedImages, error = $bindable(), generatedImage = $bindable() } = $props();
 
+  /** @type {IntersectionObserver | null} */
+  let intersectionObserver = null;
+
+  /** @type {Set<string>} */
+  let loadedImages = new Set();
+
   /**
-   * Generate object URLs for all saved images
-   * @param {Array<SavedImage>} savedImages - The saved images to generate object URLs for
-   * @returns {Promise<void>}
+   * Generate object URLs for visible saved images using Intersection Observer
+   * @param {Array<SavedImage>} savedImages - The saved images to observe
+   * @returns {void}
    */
-  async function generateObjectUrls(savedImages) {
-    for (const image of savedImages) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      await imageManager.getImageUrl(image.id);
+  function setupLazyLoading(savedImages) {
+    // Clean up existing observer
+    if (intersectionObserver) {
+      intersectionObserver.disconnect();
     }
+
+    // Create new observer for lazy loading
+    intersectionObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(async (entry) => {
+          if (entry.isIntersecting) {
+            const imageId = entry.target.getAttribute('data-image-id');
+            if (imageId && !loadedImages.has(imageId)) {
+              loadedImages.add(imageId);
+              await imageManager.getImageUrl(imageId);
+              // Stop observing this element
+              intersectionObserver?.unobserve(entry.target);
+            }
+          }
+        });
+      },
+      {
+        rootMargin: '50px', // Start loading 50px before the image becomes visible
+        threshold: 0.1
+      }
+    );
+
+    // Observe all image containers
+    setTimeout(() => {
+      const imageContainers = document.querySelectorAll('[data-image-id]');
+      imageContainers.forEach(container => {
+        intersectionObserver?.observe(container);
+      });
+    }, 0);
   }
 
   $effect(() => {
-    generateObjectUrls(savedImages);
+    if (savedImages.length > 0) {
+      setupLazyLoading(savedImages);
+    }
   });
 
   onDestroy(() => {
-    imageManager.cleanupImageUrls();
+    // Clean up intersection observer
+    if (intersectionObserver) {
+      intersectionObserver.disconnect();
+    }
+    
+    // Release references for all images this component was using
+    for (const image of loadedImages) {
+      imageManager.releaseImageUrl(image);
+    }
+    
+    // URLs are now cleaned up immediately when references drop to 0
   });
 
   /**
@@ -68,15 +115,11 @@
   <h3 class="m-0 mb-2 text-base font-bold text-black">Saved Images ({savedImages.length})</h3>
   <div class="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2 max-h-0 overflow-y- bg-red-300 h-full">
     {#each savedImages as savedImage (savedImage.id)}
-      <div class="border border-inset border-gray-500 bg-gray-300 p-2 flex flex-col gap-1">
+      <div class="border border-inset border-gray-500 bg-gray-300 p-2 flex flex-col gap-1" data-image-id={savedImage.id}>
         <button
           class="w-full h-30 bg-gray-200 border border-inset border-gray-500 flex items-center justify-center cursor-pointer text-2xl p-0 font-sans hover:bg-gray-300"
           onclick={() => loadSavedImagePreview(savedImage.id)}
           ondblclick={() => openImagePreview(savedImage.id, savedImage)}
-          oncontextmenu={(e) => {
-            e.preventDefault();
-            openImagePreview(savedImage.id, savedImage);
-          }}
           aria-label="Click to load, double-click to preview full size: {savedImage.prompt.substring(0, 50)}"
           title="Click: Load to main view | Double-click: Open full size preview"
         >
