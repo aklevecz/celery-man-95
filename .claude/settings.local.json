@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(nvm list:*)",
+      "Bash(mkdir:*)"
+    ],
+    "deny": []
+  }
+}

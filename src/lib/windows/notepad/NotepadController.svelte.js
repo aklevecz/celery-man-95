@@ -1,12 +1,10 @@
 import { windowManager } from '$lib/window-manager.svelte.js';
 import Notepad from '$lib/windows/notepad/Notepad.svelte';
 
-export function openNotepadWindow() {
-	const windowId = 'notepad-window';
-	
-	windowManager.registerWindowCreator(windowId, openNotepadWindow);
-	
-	return windowManager.createWindow({
+const windowId = 'notepad-window';
+
+function openNotepadWindow() {
+	windowManager.createWindow({
 		id: windowId,
 		title: 'Notepad',
 		content: {
@@ -19,3 +17,10 @@ export function openNotepadWindow() {
 		y: 200
 	});
 }
+
+function NotepadController() {
+	windowManager.registerWindowCreator(windowId, openNotepadWindow);
+	return { openNotepadWindow };
+}
+
+export default NotepadController();

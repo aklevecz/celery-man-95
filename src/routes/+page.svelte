@@ -5,8 +5,9 @@
 	import WindowManager from '$lib/components/WindowManager.svelte';
 	import Taskbar from '$lib/components/Taskbar.svelte';
 	import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
-	import { openAboutWindow } from '$lib/windows/about/AboutController.svelte.js';
-	import { openNotepadWindow } from '$lib/windows/notepad/NotepadController.svelte.js';
+	import NotepadController from '$lib/windows/notepad/NotepadController.svelte.js';
+	import FluxorController from '$lib/windows/fluxor/FluxorController.svelte.js';
+	import AboutController from '$lib/windows/about/AboutController.svelte';
 
 	// Initialize window manager and theme manager on page load
 	onMount(() => {
@@ -35,13 +36,17 @@
 			<div class="icon">📄</div>
 			<div class="label">Demo Window</div>
 		</button>
-		<button class="desktop-icon" on:click={openAboutWindow}>
+		<button class="desktop-icon" on:click={AboutController.openAboutWindow}>
 			<div class="icon">ℹ️</div>
 			<div class="label">About</div>
 		</button>
-		<button class="desktop-icon" on:click={openNotepadWindow}>
+		<button class="desktop-icon" on:click={NotepadController.openNotepadWindow}>
 			<div class="icon">📝</div>
 			<div class="label">Notepad</div>
+		</button>
+		<button class="desktop-icon" on:click={FluxorController.openFluxorWindow}>
+			<div class="icon">🎨</div>
+			<div class="label">Fluxor</div>
 		</button>
 	</div>
 

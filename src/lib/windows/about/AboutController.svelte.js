@@ -1,14 +1,11 @@
-import { windowManager } from '$lib/window-manager.svelte.js';
+import { windowManager } from "$lib/window-manager.svelte.js";
 
-export function openAboutWindow() {
-	const windowId = 'about-window';
-	
-	windowManager.registerWindowCreator(windowId, openAboutWindow);
-	
-	return windowManager.createWindow({
-		id: windowId,
-		title: 'About Windows',
-		content: `
+const windowId = "about-window";
+function openAboutWindow() {
+  windowManager.createWindow({
+    id: windowId,
+    title: "About Windows",
+    content: `
 			<div style="padding: 20px; font-family: 'MS Sans Serif', sans-serif;">
 				<h2 style="margin-top: 0; color: #000080;">About This Application</h2>
 				<p>This is a Windows 95-style desktop environment built with SvelteKit.</p>
@@ -27,9 +24,16 @@ export function openAboutWindow() {
 				<p><strong>Inspired by:</strong> Windows 95 UI</p>
 			</div>
 		`,
-		width: 400,
-		height: 350,
-		x: 300,
-		y: 150
-	});
+    width: 400,
+    height: 350,
+    x: 300,
+    y: 150,
+  });
 }
+
+function AboutController() {
+  windowManager.registerWindowCreator(windowId, openAboutWindow);
+  return { openAboutWindow };
+}
+
+export default AboutController();
