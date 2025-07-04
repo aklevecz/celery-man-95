@@ -6,6 +6,8 @@ export const models = {
   flux_kontext_pro: "fal-ai/flux-pro/kontext",
 };
 
+/** @typedef {"fal-ai/flux-pro/v1.1-ultra" | "fal-ai/flux-pro/kontext"} Model */
+
 
 
 // Response examples
@@ -20,10 +22,11 @@ const createFalApi = () => {
   });
 
   /**
-   * Generate an image using the FLUX PRO 1.1 ULTRA model from fal.ai
+   * Generate an image using FLUX models from fal.ai
    * @param {Model} model - The model to use
    * @param {Object} options - The options for image generation
    * @param {string} options.prompt - The text prompt for image generation
+   * @param {string} [options.image_url] - Optional reference image URL for image-to-image generation (required for Kontext model)
    * @param {number} [options.seed] - The seed for reproducible results
    * @param {number} [options.num_images=1] - Number of images to generate (1-4)
    * @param {string} [options.aspect_ratio="16:9"] - Aspect ratio of the image
@@ -31,6 +34,8 @@ const createFalApi = () => {
    * @param {boolean} [options.enable_safety_checker=true] - Enable safety checker
    * @param {string} [options.safety_tolerance="2"] - Safety tolerance level (1-6)
    * @param {boolean} [options.raw=false] - Generate less processed images
+   * @param {number} [options.guidance_scale] - Controls how closely the model follows the prompt
+   * @param {number} [options.num_inference_steps=28] - Number of inference steps (1-50)
    * @returns {Promise<string | null>} - The URL of the generated image, or null on failure
    */
   async function generateFluxImage(model, options) {

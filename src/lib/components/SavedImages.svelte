@@ -109,6 +109,21 @@
       });
     }
   }
+
+  /**
+   * Handle drag start for images
+   * @param {DragEvent} event - Drag event
+   * @param {string} imageId - The ID of the image being dragged
+   */
+  async function handleDragStart(event, imageId) {
+    const objectURL = await imageManager.getImageUrl(imageId);
+    if (objectURL && event.dataTransfer) {
+      // Set the image URL for drag and drop
+      event.dataTransfer.setData('text/uri-list', objectURL);
+      event.dataTransfer.setData('text/plain', objectURL);
+      event.dataTransfer.effectAllowed = 'copy';
+    }
+  }
 </script>
 
 <div class="p-1 border-t border-gray-500 h-full">
@@ -121,10 +136,12 @@
           onclick={() => loadSavedImagePreview(savedImage.id)}
           ondblclick={() => openImagePreview(savedImage.id, savedImage)}
           aria-label="Click to load, double-click to preview full size: {savedImage.prompt.substring(0, 50)}"
-          title="Click: Load to main view | Double-click: Open full size preview"
+          title="Click: Load to main view | Double-click: Open full size preview | Drag: Use as reference image"
+          draggable="true"
+          ondragstart={(event) => handleDragStart(event, savedImage.id)}
         >
           <div>
-            <img src={imageManager.imageUrls[savedImage.id] || "favicon.svg"} alt="Saved generation thumbnail" class="" />
+            <img src={imageManager.imageUrls[savedImage.id] || "favicon.svg"} alt="Saved generation thumbnail" class="" draggable="false" />
           </div>
         </button>
         <div class="text-base text-black">
