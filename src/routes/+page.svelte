@@ -13,6 +13,7 @@
   import SettingsController from "$lib/windows/settings/SettingsController.svelte.js";
   import CinematOrController from "$lib/windows/cinemator/CinematOrController.svelte.js";
   import UpscalerController from "$lib/windows/upscaler/UpscalerController.svelte.js";
+  import VideoUpscalerController from "$lib/windows/video-upscaler/VideoUpscalerController.svelte.js";
   // Initialize window manager and theme manager on page load
   onMount(() => {
     windowManager.loadWindowState();
@@ -71,6 +72,10 @@
     <button class="desktop-icon" on:click={UpscalerController.openUpscalerWindow}>
       <div class="icon">🔍</div>
       <div class="label">Upscaler</div>
+    </button>
+    <button class="desktop-icon" on:click={VideoUpscalerController.openVideoUpscalerWindow}>
+      <div class="icon">🎬</div>
+      <div class="label">Video Upscaler</div>
     </button>
   </div>
 

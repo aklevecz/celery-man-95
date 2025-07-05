@@ -142,6 +142,21 @@
       default: return mode;
     }
   }
+
+  /**
+   * Handle drag start for videos
+   * @param {DragEvent} event - Drag event
+   * @param {string} videoId - The ID of the video being dragged
+   */
+  async function handleDragStart(event, videoId) {
+    const objectURL = await getVideoPreviewUrl(videoId);
+    if (objectURL && event.dataTransfer) {
+      // Set the video URL for drag and drop
+      event.dataTransfer.setData("text/uri-list", objectURL);
+      event.dataTransfer.setData("text/plain", objectURL);
+      event.dataTransfer.effectAllowed = "copy";
+    }
+  }
 </script>
 
 <div class="p-1 border-t border-gray-500 h-full">
@@ -165,7 +180,9 @@
                 const videoElement = event.currentTarget.querySelector('video');
                 handleVideoClick(savedVideo.id, videoElement);
               }}
-              title="Click to preview: {savedVideo.prompt.substring(0, 50)}"
+              title="Click: Preview video | Drag: Use in video upscaler"
+              draggable="true"
+              ondragstart={(event) => handleDragStart(event, savedVideo.id)}
             >
               <!-- Video element for thumbnail (hidden initially) -->
               <video 

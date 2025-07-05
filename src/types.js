@@ -64,7 +64,7 @@
  * @property {string} filename - Generated filename
  */
 
-/** @typedef {"fal-ai/flux-pro/v1.1-ultra" | "fal-ai/flux-pro/kontext" | "fal-ai/flux-pro/kontext/text-to-image" | "fal-ai/bytedance/seedance/v1/pro/text-to-video" | "fal-ai/bytedance/seedance/v1/pro/image-to-video" | "fal-ai/clarity-upscaler" | "fal-ai/esrgan" | "fal-ai/creative-upscaler" | "fal-ai/aura-sr" | "fal-ai/fooocus/upscale-or-vary"} Model */
+/** @typedef {"fal-ai/flux-pro/v1.1-ultra" | "fal-ai/flux-pro/kontext" | "fal-ai/flux-pro/kontext/text-to-image" | "fal-ai/bytedance/seedance/v1/pro/text-to-video" | "fal-ai/bytedance/seedance/v1/pro/image-to-video" | "fal-ai/clarity-upscaler" | "fal-ai/esrgan" | "fal-ai/creative-upscaler" | "fal-ai/aura-sr" | "fal-ai/fooocus/upscale-or-vary" | "fal-ai/video-upscaler" | "fal-ai/topaz/upscale/video"} Model */
 
 /**
  * @typedef {'21:9' | '16:9' | '4:3' | '1:1' | '3:4' | '9:16'} AspectRatio
@@ -102,6 +102,13 @@
  * @property {string} [model_type] - Model variant (for models that support it)
  * @property {boolean} [enhance_face] - Enable face enhancement
  * @property {boolean} [reduce_noise] - Enable noise reduction
+ *
+ * @typedef {Object} VideoUpscalingOptions
+ * @property {string} video_url - The video URL to upscale (required)
+ * @property {1 | 2 | 3 | 4 | 6 | 8} [scale_factor] - Upscaling factor (1-8x)
+ * @property {number} [target_fps] - Target FPS for frame interpolation (Topaz only)
+ * @property {boolean} [enable_frame_interpolation] - Enable frame interpolation (Topaz only)
+ * @property {'proteus-v4' | 'apollo-v8'} [model_name] - Model variant for Topaz
  *
  * @typedef {Object} QueueUpdate
  * @property {QueueStatus} status - Current status of the request

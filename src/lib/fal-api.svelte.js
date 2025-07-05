@@ -1,5 +1,14 @@
 import { fal } from "@fal-ai/client";
 
+/**
+ * @typedef {Object} VideoUpscalingOptions
+ * @property {string} video_url - The video URL to upscale (required)
+ * @property {1 | 2 | 3 | 4 | 6 | 8} [scale_factor] - Upscaling factor (1-8x)
+ * @property {number} [target_fps] - Target FPS for frame interpolation (Topaz only)
+ * @property {boolean} [enable_frame_interpolation] - Enable frame interpolation (Topaz only)
+ * @property {string} [model_name] - Model variant for Topaz ("proteus-v4" or "apollo-v8")
+ */
+
 /** @type {Record<string, Model>} */
 export const models = {
   flux_pro_1_1_ultra: "fal-ai/flux-pro/v1.1-ultra",
@@ -12,6 +21,8 @@ export const models = {
   creative_upscaler: "fal-ai/creative-upscaler",
   aura_sr: "fal-ai/aura-sr",
   fooocus_upscale: "fal-ai/fooocus/upscale-or-vary",
+  video_upscaler: "fal-ai/video-upscaler",
+  topaz_video_upscaler: "fal-ai/topaz/upscale/video",
 };
 
 // Response examples
@@ -267,12 +278,29 @@ const createFalApi = () => {
       }, 30000);
     });
 
-    // async function uploadFile() {
-    //   const file = new File(["Hello, World!"], "hello.txt", { type: "text/plain" });
-    //   const url = await fal.storage.upload(file);
-    // }
+
   }
 
+  /**
+   * Upload a file (video or image) to FAL.AI storage
+   * @param {File | Blob} file - The file to upload
+   * @returns {Promise<string>} - The uploaded file URL
+   */
+  async function uploadFile(file) {
+    if (!file) {
+      throw new Error("No file provided");
+    }
+
+    try {
+      console.log("🔄 Uploading file to FAL.AI storage:", file || 'blob', file.type, file.size);
+      const url = await fal.storage.upload(file);
+      console.log("✅ File uploaded successfully:", url);
+      return url;
+    } catch (/** @type {*} */ error) {
+      console.error("❌ File upload failed:", error);
+      throw new Error(`Failed to upload file: ${error.message}`);
+    }
+  }
   /**
    * Upscale an image using FAL.AI upscaling models
    * @param {Model} model - The upscaling model to use
@@ -352,11 +380,90 @@ const createFalApi = () => {
     }
   }
 
+  /**
+   * Upscale a video using FAL.AI video upscaling models
+   * @param {string} model - The video upscaling model to use
+   * @param {VideoUpscalingOptions} options - The options for video upscaling
+   * @returns {Promise<string | null>} - The URL of the upscaled video, or null on failure
+   */
+  async function generateUpscaledVideo(model, options) {
+    const { video_url, scale_factor = 2, ...otherOptions } = options;
+    /** @type {Record<string, any>} */
+    const otherOpts = otherOptions;
+
+    // Validate inputs
+    if (!model || typeof model !== "string") {
+      throw new Error("Invalid model specified");
+    }
+
+    if (!video_url || typeof video_url !== "string") {
+      throw new Error("Video URL is required");
+    }
+
+    // Prepare input parameters
+    /** @type {Record<string, any>} */
+    const inputParams = { video_url };
+
+    // Add scale factor
+    inputParams.scale_factor = scale_factor;
+
+    // Add other options only if they have valid values
+    Object.keys(otherOpts).forEach((key) => {
+      const value = otherOpts[key];
+      if (value !== undefined && value !== null && value !== "") {
+        inputParams[key] = value;
+      }
+    });
+
+    // Debug logging
+    console.log("🎬 Debug: Video Upscaling Model:", model);
+    console.log("🎬 Debug: Video Upscaling Input Params:", inputParams);
+
+    try {
+      const result = await fal.subscribe(model, {
+        input: inputParams,
+        logs: true,
+        onQueueUpdate: (update) => {
+          console.log("🎬 Video Upscaling Queue Update:", update);
+          if (update.status === "IN_PROGRESS" && update.logs) {
+            update.logs.map((log) => log.message).forEach(console.log);
+          }
+        },
+      });
+
+      // Debug the full result
+      console.log("🎬 Video Upscaling Final Result:", result);
+
+      // Check for video in response
+      if (result?.data?.video?.url) {
+        return result.data.video.url;
+      }
+
+      // Some models might return videos array
+      if (result?.data?.videos && result.data.videos.length > 0) {
+        return result.data.videos[0].url;
+      }
+
+      // Check for errors in the response
+      if (result?.data?.error) {
+        throw new Error(`API Error: ${result.data.error}`);
+      }
+
+      console.warn("No video URL found in upscaling response:", result);
+      return null;
+    } catch (error) {
+      console.error("Video upscaling error:", error);
+      throw error;
+    }
+  }
+
   return {
     generateFluxImage,
     generateSeedanceImageToVideo,
     generateSeedanceVideo,
     generateUpscaledImage,
+    generateUpscaledVideo,
+    uploadFile,
     testRealTime,
   };
 };

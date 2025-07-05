@@ -17,6 +17,8 @@ const METADATA_KEY = 'video-metadata';
  * @property {number} timestamp - Creation timestamp
  * @property {Object} parameters - Generation parameters (resolution, duration, etc.)
  * @property {string} [referenceImageId] - ID of reference image if image-to-video
+ * @property {number} [size] - File size in bytes
+ * @property {string} [type] - MIME type
  */
 
 /**
@@ -30,8 +32,10 @@ async function openVideoDatabase() {
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
     
+    /** @param {IDBVersionChangeEvent} event */
     request.onupgradeneeded = (event) => {
-      const db = event.target.result;
+      /** @type {IDBDatabase} */
+      const db = /** @type {IDBRequest} */ (event.target).result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
         store.createIndex('timestamp', 'timestamp', { unique: false });
@@ -45,7 +49,7 @@ async function openVideoDatabase() {
  * @returns {string}
  */
 function generateVideoId() {
-  return `video_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `video_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 }
 
 /**
@@ -75,7 +79,7 @@ function createVideoStorage() {
    * @param {string} [referenceImageId] - Reference image ID if image-to-video
    * @returns {Promise<string>} - The ID of the saved video
    */
-  async function saveVideo(videoUrl, prompt, model, mode, parameters, referenceImageId = null) {
+  async function saveVideo(videoUrl, prompt, model, mode, parameters, referenceImageId) {
     try {
       const videoId = generateVideoId();
       const timestamp = Date.now();

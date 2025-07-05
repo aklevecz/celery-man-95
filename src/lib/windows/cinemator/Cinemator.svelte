@@ -211,9 +211,11 @@
         }
         
         /** @type {any} */
-        const optionsWithImage = options;
-        optionsWithImage.image_url = imageData;
+        options.image_url = imageData;
+        delete options.aspect_ratio
       }
+
+
 
       console.log('🎬 Generating video with options:', options);
 

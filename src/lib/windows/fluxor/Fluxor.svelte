@@ -36,7 +36,7 @@
    * @property {number} [num_inference_steps] - Number of inference steps (1-50)
    */
 
-  /** @type {string} */
+  /** @type {Model} */
   let model = $state(models.flux_kontext_pro);
   /** @type {string} */
   let prompt = $state("");
