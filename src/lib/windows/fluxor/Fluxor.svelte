@@ -1,8 +1,42 @@
 <script>
   import falApi, { models } from "$lib/fal-api.svelte.js";
   import { imageManager } from "$lib/image-manager.svelte.js";
+  import { 
+    fileToReferenceImage, 
+    stitchImages, 
+    cleanupImageUrls,
+    getImageDimensions 
+  } from "$lib/image-utils.js";
 
-  /** @type {Model} */
+  /**
+   * @typedef {'21:9' | '16:9' | '4:3' | '1:1' | '3:4' | '9:16'} AspectRatio
+   * @typedef {'jpeg' | 'png'} OutputFormat
+   * @typedef {'1' | '2' | '3' | '4' | '5' | '6'} SafetyTolerance
+   * @typedef {'horizontal' | 'vertical' | 'grid'} StitchMode
+   * 
+   * @typedef {Object} ReferenceImage
+   * @property {string} id - Unique identifier
+   * @property {File | null} file - Original file object
+   * @property {string} url - Image URL (data URI or blob URL)
+   * @property {string} name - Display name
+   * @property {number} width - Image width
+   * @property {number} height - Image height
+   * 
+   * @typedef {Object} ImageGenerationOptions
+   * @property {string} prompt - The text prompt for image generation
+   * @property {string} [image_url] - Optional reference image URL for image-to-image generation
+   * @property {number} [seed] - The seed for reproducible results
+   * @property {number} [num_images] - Number of images to generate (1-4)
+   * @property {AspectRatio} [aspect_ratio] - Aspect ratio of the image
+   * @property {OutputFormat} [output_format] - Output format
+   * @property {boolean} [enable_safety_checker] - Enable safety checker
+   * @property {SafetyTolerance} [safety_tolerance] - Safety tolerance level
+   * @property {boolean} [raw] - Generate less processed images
+   * @property {number} [guidance_scale] - Controls how closely the model follows the prompt
+   * @property {number} [num_inference_steps] - Number of inference steps (1-50)
+   */
+
+  /** @type {string} */
   let model = $state(models.flux_kontext_pro);
   /** @type {string} */
   let prompt = $state("");
@@ -28,11 +62,24 @@
   let error = $state("");
 
   // Image input state
+  /** @type {ReferenceImage[]} */
+  let referenceImages = $state([]);
+  /** @type {string | null} */
+  let compositeImageUrl = $state(null);
+  /** @type {boolean} */
+  let isDragOver = $state(false);
+  /** @type {StitchMode} */
+  let stitchMode = $state('horizontal');
+  /** @type {boolean} */
+  let isGeneratingComposite = $state(false);
+  /** @type {boolean} */
+  let useMultipleImages = $state(false);
+  
+  // Legacy single image support
   /** @type {string | null} */
   let referenceImageUrl = $state(null);
   /** @type {File | null} */
   let selectedFile = $state(null);
-  let isDragOver = $state(false);
 
   /** @type {AspectRatio[]} */
   const aspectRatios = ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16"];
@@ -41,6 +88,15 @@
   /** @type {SafetyTolerance[]} */
   const safetyTolerances = ["1", "2", "3", "4", "5", "6"];
   const acceptedFileTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif", "image/avif"];
+  
+  /** @type {StitchMode[]} */
+  const stitchModes = ['horizontal', 'vertical', 'grid'];
+  
+  const stitchModeLabels = {
+    horizontal: 'Side by Side',
+    vertical: 'Top to Bottom', 
+    grid: 'Grid Layout'
+  };
 
   /** @type {Array<{key: string, value: string, label: string, description: string}>} */
   const modelOptions = [
@@ -75,14 +131,18 @@
    */
   async function handleFileSelect(event) {
     const target = /** @type {HTMLInputElement} */ (event.target);
-    const file = target.files?.[0];
-    if (file) {
-      await processFile(file);
+    const files = target.files;
+    if (files && files.length > 0) {
+      if (useMultipleImages) {
+        await processMultipleFiles(Array.from(files));
+      } else {
+        await processFile(files[0]);
+      }
     }
   }
 
   /**
-   * Process selected file
+   * Process selected file (single image mode)
    * @param {File} file - The selected file
    */
   async function processFile(file) {
@@ -102,7 +162,44 @@
   }
 
   /**
-   * Clear selected reference image
+   * Process multiple selected files
+   * @param {File[]} files - Array of selected files
+   */
+  async function processMultipleFiles(files) {
+    try {
+      error = "";
+      
+      // Filter valid image files
+      const validFiles = files.filter(file => acceptedFileTypes.includes(file.type));
+      
+      if (validFiles.length === 0) {
+        error = "Please select valid image files (JPG, PNG, WebP, GIF, AVIF)";
+        return;
+      }
+      
+      if (validFiles.length !== files.length) {
+        error = `Skipped ${files.length - validFiles.length} invalid file(s)`;
+      }
+      
+      // Convert files to ReferenceImage objects
+      const newImages = await Promise.all(
+        validFiles.map(file => fileToReferenceImage(file))
+      );
+      
+      referenceImages = [...referenceImages, ...newImages];
+      
+      // Clear single image state when using multiple
+      selectedFile = null;
+      referenceImageUrl = null;
+      
+    } catch (err) {
+      error = "Failed to process image files";
+      console.error("File processing error:", err);
+    }
+  }
+
+  /**
+   * Clear selected reference image(s)
    * @param {Event} [event] - Click event to prevent bubbling
    */
   function clearReferenceImage(event) {
@@ -111,11 +208,38 @@
       event.stopPropagation();
     }
 
+    // Clear single image
     selectedFile = null;
     referenceImageUrl = null;
+    
+    // Clear multiple images
+    cleanupImageUrls(referenceImages);
+    referenceImages = [];
+    compositeImageUrl = null;
+    
     // Reset file input
     const fileInput = /** @type {HTMLInputElement} */ (document.getElementById("reference-image-input"));
     if (fileInput) fileInput.value = "";
+  }
+  
+  /**
+   * Remove a specific image from the reference images array
+   * @param {string} imageId - ID of the image to remove
+   */
+  function removeReferenceImage(imageId) {
+    const imageIndex = referenceImages.findIndex(img => img.id === imageId);
+    if (imageIndex >= 0) {
+      const imageToRemove = referenceImages[imageIndex];
+      if (imageToRemove.url.startsWith('blob:')) {
+        URL.revokeObjectURL(imageToRemove.url);
+      }
+      referenceImages = referenceImages.filter(img => img.id !== imageId);
+      
+      // Clear composite if no images left
+      if (referenceImages.length === 0) {
+        compositeImageUrl = null;
+      }
+    }
   }
 
   /**
@@ -148,8 +272,23 @@
     if (imageUrl && (imageUrl.startsWith("http") || imageUrl.startsWith("blob:") || imageUrl.startsWith("data:"))) {
       // Handle dragged image URL from gallery
       try {
-        referenceImageUrl = imageUrl;
-        selectedFile = null; // Clear file since we're using a URL
+        if (useMultipleImages) {
+          // Add to multiple images array
+          const dimensions = await getImageDimensions(imageUrl);
+          const newImage = {
+            id: crypto.randomUUID(),
+            file: null,
+            url: imageUrl,
+            name: 'Dragged Image',
+            width: dimensions.width,
+            height: dimensions.height
+          };
+          referenceImages = [...referenceImages, newImage];
+        } else {
+          // Single image mode
+          referenceImageUrl = imageUrl;
+          selectedFile = null;
+        }
         error = "";
       } catch (err) {
         error = "Failed to use dragged image";
@@ -161,7 +300,11 @@
     // Handle file drops
     const files = event.dataTransfer?.files;
     if (files && files.length > 0) {
-      await processFile(files[0]);
+      if (useMultipleImages) {
+        await processMultipleFiles(Array.from(files));
+      } else {
+        await processFile(files[0]);
+      }
     }
   }
 
@@ -185,16 +328,40 @@
         seed: seed.trim() ? parseInt(seed) : Math.floor(Math.random() * 1000000),
       };
 
-      console.log(referenceImageUrl);
+      // Determine which image to use as reference
+      let finalReferenceImage = null;
+      
+      if (useMultipleImages && referenceImages.length > 0) {
+        // Use composite image if available, otherwise generate it
+        if (compositeImageUrl) {
+          finalReferenceImage = compositeImageUrl;
+        } else if (referenceImages.length === 1) {
+          finalReferenceImage = referenceImages[0].url;
+        } else {
+          // Generate composite on the fly
+          try {
+            finalReferenceImage = await stitchImages(referenceImages, stitchMode, 10);
+          } catch (err) {
+            error = "Failed to create composite image for generation";
+            console.error("Composite generation error:", err);
+            return;
+          }
+        }
+      } else if (referenceImageUrl) {
+        // Single image mode
+        finalReferenceImage = referenceImageUrl;
+      }
+      
+      console.log("Final reference image:", finalReferenceImage);
 
-      // Add image_url if reference image is provided (works with any model that supports it)
-      if (referenceImageUrl) {
-        let imageData = referenceImageUrl;
+      // Add image_url if reference image is provided
+      if (finalReferenceImage) {
+        let imageData = finalReferenceImage;
 
-        if (referenceImageUrl.startsWith("blob:")) {
+        if (finalReferenceImage.startsWith("blob:")) {
           // Convert blob URL to data URI
           try {
-            const response = await fetch(referenceImageUrl);
+            const response = await fetch(finalReferenceImage);
             const blob = await response.blob();
             const dataUri = await new Promise((resolve) => {
               const reader = new FileReader();
@@ -245,6 +412,33 @@
     }
   }
 
+  /**
+   * Generate composite image from multiple reference images
+   */
+  async function generateCompositeImage() {
+    if (referenceImages.length === 0) {
+      error = "No images to combine";
+      return;
+    }
+    
+    if (referenceImages.length === 1) {
+      compositeImageUrl = referenceImages[0].url;
+      return;
+    }
+    
+    isGeneratingComposite = true;
+    error = "";
+    
+    try {
+      compositeImageUrl = await stitchImages(referenceImages, stitchMode, 10);
+    } catch (err) {
+      error = "Failed to create composite image";
+      console.error("Composite generation error:", err);
+    } finally {
+      isGeneratingComposite = false;
+    }
+  }
+  
   function downloadImage() {
     if (generatedImage) {
       const link = document.createElement("a");
@@ -264,7 +458,43 @@
   <div class="p-4 border-b border-gray-500">
     <!-- Reference Image Input Section -->
     <div class="mb-4">
-      <label for="reference-image-input" class="block mb-2 text-lg font-bold"> Reference Image (optional): </label>
+      <!-- Mode Toggle -->
+      <div class="mb-3">
+        <label class="flex items-center text-base font-bold mb-2">
+          <input type="checkbox" class="mr-2" bind:checked={useMultipleImages}>
+          Use Multiple Reference Images
+        </label>
+        {#if useMultipleImages}
+          <p class="text-sm text-gray-600">Upload multiple images to create a composite reference image</p>
+        {:else}
+          <p class="text-sm text-gray-600">Upload a single reference image</p>
+        {/if}
+      </div>
+      
+      <label for="reference-image-input" class="block mb-2 text-lg font-bold"> Reference Image{useMultipleImages ? 's' : ''} (optional): </label>
+      
+      <!-- Stitch Mode Selection (only show when multiple images mode is active) -->
+      {#if useMultipleImages && referenceImages.length > 1}
+        <div class="mb-3 p-3 bg-gray-100 rounded">
+          <label for="stitch-mode-group" class="block mb-2 text-sm font-bold">Composition Style:</label>
+          <div class="flex gap-2" id="stitch-mode-group" role="group" aria-labelledby="stitch-mode-group">
+            {#each stitchModes as mode}
+              <label class="flex items-center">
+                <input type="radio" bind:group={stitchMode} value={mode} class="mr-1">
+                <span class="text-sm">{stitchModeLabels[mode]}</span>
+              </label>
+            {/each}
+          </div>
+          <button 
+            class="mt-2 px-3 py-1 text-sm border border-gray-400 bg-white text-black cursor-pointer hover:bg-gray-50 disabled:bg-gray-200 disabled:cursor-not-allowed"
+            onclick={generateCompositeImage}
+            disabled={isGeneratingComposite}
+          >
+            {isGeneratingComposite ? 'Creating...' : 'Preview Composite'}
+          </button>
+        </div>
+      {/if}
+      
       <div
         class="border-2 border-dashed border-gray-400 rounded p-4 text-center cursor-pointer transition-colors {isDragOver ? 'border-blue-500 bg-blue-50' : 'hover:border-gray-600'}"
         role="button"
@@ -280,28 +510,91 @@
           }
         }}
       >
-        {#if referenceImageUrl}
-          <div class="relative">
-            <img src={referenceImageUrl} alt="Reference" class="max-w-full max-h-32 mx-auto border border-gray-500 rounded" />
-            <button
-              class="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white text-xs rounded-full hover:bg-red-600 flex items-center justify-center"
-              onclick={(event) => clearReferenceImage(event)}
-              title="Remove image"
-            >
-              ×
-            </button>
-            <p class="mt-2 text-sm text-gray-600">{selectedFile?.name}</p>
-          </div>
+        {#if useMultipleImages}
+          <!-- Multiple Images Display -->
+          {#if referenceImages.length > 0}
+            <div class="space-y-3">
+              <!-- Image Grid -->
+              <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {#each referenceImages as img (img.id)}
+                  <div class="relative group">
+                    <img src={img.url} alt={img.name} class="w-full h-20 object-cover border border-gray-500 rounded" />
+                    <button
+                      class="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full hover:bg-red-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      onclick={(event) => {
+                        event.stopPropagation();
+                        removeReferenceImage(img.id);
+                      }}
+                      title="Remove image"
+                    >
+                      ×
+                    </button>
+                    <div class="text-xs text-gray-600 mt-1 truncate">{img.name}</div>
+                  </div>
+                {/each}
+              </div>
+              
+              <!-- Composite Preview -->
+              {#if compositeImageUrl}
+                <div class="mt-3 p-2 bg-blue-50 rounded">
+                  <p class="text-sm font-bold text-blue-800 mb-2">Composite Preview:</p>
+                  <img src={compositeImageUrl} alt="Composite" class="max-w-full max-h-32 mx-auto border border-blue-300 rounded" />
+                </div>
+              {/if}
+              
+              <div class="text-sm text-gray-600">
+                {referenceImages.length} image{referenceImages.length !== 1 ? 's' : ''} selected
+                <button 
+                  class="ml-2 text-red-600 hover:text-red-800 underline"
+                  onclick={(event) => {
+                    event.stopPropagation();
+                    clearReferenceImage();
+                  }}
+                >
+                  Clear all
+                </button>
+              </div>
+            </div>
+          {:else}
+            <div class="py-8">
+              <div class="text-4xl mb-2">📁</div>
+              <p class="text-base text-gray-600 mb-1">Drag & drop multiple images here, or click to select</p>
+              <p class="text-sm text-gray-500">Supports: JPG, PNG, WebP, GIF, AVIF</p>
+              <p class="text-sm text-blue-600 mt-2">💡 You can also drag images from the gallery!</p>
+            </div>
+          {/if}
         {:else}
-          <div class="py-8">
-            <div class="text-4xl mb-2">📁</div>
-            <p class="text-base text-gray-600 mb-1">Drag & drop an image here, or click to select</p>
-            <p class="text-sm text-gray-500">Supports: JPG, PNG, WebP, GIF, AVIF</p>
-            <p class="text-sm text-blue-600 mt-2">💡 You can also drag images from the gallery!</p>
-          </div>
+          <!-- Single Image Display -->
+          {#if referenceImageUrl}
+            <div class="relative">
+              <img src={referenceImageUrl} alt="Reference" class="max-w-full max-h-32 mx-auto border border-gray-500 rounded" />
+              <button
+                class="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white text-xs rounded-full hover:bg-red-600 flex items-center justify-center"
+                onclick={(event) => clearReferenceImage(event)}
+                title="Remove image"
+              >
+                ×
+              </button>
+              <p class="mt-2 text-sm text-gray-600">{selectedFile?.name}</p>
+            </div>
+          {:else}
+            <div class="py-8">
+              <div class="text-4xl mb-2">📁</div>
+              <p class="text-base text-gray-600 mb-1">Drag & drop an image here, or click to select</p>
+              <p class="text-sm text-gray-500">Supports: JPG, PNG, WebP, GIF, AVIF</p>
+              <p class="text-sm text-blue-600 mt-2">💡 You can also drag images from the gallery!</p>
+            </div>
+          {/if}
         {/if}
       </div>
-      <input id="reference-image-input" type="file" accept="image/*" class="hidden" onchange={handleFileSelect} />
+      <input 
+        id="reference-image-input" 
+        type="file" 
+        accept="image/*" 
+        multiple={useMultipleImages}
+        class="hidden" 
+        onchange={handleFileSelect} 
+      />
     </div>
 
     <label for="prompt-input" class="block mb-2 text-lg font-bold">Enter your prompt:</label>
