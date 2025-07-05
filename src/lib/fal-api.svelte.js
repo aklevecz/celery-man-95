@@ -10,10 +10,6 @@ export const models = {
   seedance_pro_image_to_video: "fal-ai/bytedance/seedance/v1/pro/image-to-video",
 };
 
-/** @typedef {"fal-ai/flux-pro/v1.1-ultra" | "fal-ai/flux-pro/kontext" | "fal-ai/flux-pro/kontext/text-to-image" | "fal-ai/bytedance/seedance/v1/pro/text-to-video" | "fal-ai/bytedance/seedance/v1/pro/image-to-video"} Model */
-
-
-
 // Response examples
 // let IN_QUEUE_EXAMPLE = {status: 'IN_QUEUE', request_id: '734b9d70-86d2-4dfb-9eeb-d14c5c7c6ed9', response_url: 'https://queue.fal.run/fal-ai/flux-pro/requests/734b9d70-86d2-4dfb-9eeb-d14c5c7c6ed9', status_url: 'https://queue.fal.run/fal-ai/flux-pro/requests/734b9d70-86d2-4dfb-9eeb-d14c5c7c6ed9/status', cancel_url: 'https://queue.fal.run/fal-ai/flux-pro/requests/734b9d70-86d2-4dfb-9eeb-d14c5c7c6ed9/cancel', …}
 // let IN_PROGRESS_EXAMPLE = {status: 'IN_PROGRESS', request_id: '734b9d70-86d2-4dfb-9eeb-d14c5c7c6ed9', response_url: 'https://queue.fal.run/fal-ai/flux-pro/requests/734b9d70-86d2-4dfb-9eeb-d14c5c7c6ed9', status_url: 'https://queue.fal.run/fal-ai/flux-pro/requests/734b9d70-86d2-4dfb-9eeb-d14c5c7c6ed9/status', cancel_url: 'https://queue.fal.run/fal-ai/flux-pro/requests/734b9d70-86d2-4dfb-9eeb-d14c5c7c6ed9/cancel', …}
@@ -23,19 +19,19 @@ const createFalApi = () => {
 
   // Simple configuration without middleware for now
   fal.config({
-    proxyUrl: "/api/fal/proxy"
+    proxyUrl: "/api/fal/proxy",
   });
 
   // Function to get request headers with API key
   function getRequestHeaders() {
     const headers = {};
     try {
-      const clientApiKey = settingsManager.getSetting('falApiKey');
+      const clientApiKey = settingsManager.getSetting("falApiKey");
       if (clientApiKey && clientApiKey.trim()) {
-        headers['x-fal-client-key'] = clientApiKey.trim();
+        headers["x-fal-client-key"] = clientApiKey.trim();
       }
     } catch (error) {
-      console.warn('Error getting API key:', error);
+      console.warn("Error getting API key:", error);
     }
     return headers;
   }
@@ -59,7 +55,7 @@ const createFalApi = () => {
    */
   async function generateFluxImage(model, options) {
     const { prompt, image_url, ...otherOptions } = options;
-    console.log(image_url)
+    console.log(image_url);
     // For FLUX Kontext, choose the correct endpoint based on whether image_url is provided
     let actualModel = model;
     if (model === models.flux_kontext_pro) {
@@ -71,42 +67,42 @@ const createFalApi = () => {
         actualModel = models.flux_kontext_pro_text_to_image;
       }
     }
-    console.log(actualModel)
+    console.log(actualModel);
     // Prepare input parameters
     const inputParams = { prompt, ...otherOptions };
     if (image_url) {
       inputParams.image_url = image_url;
     }
-    
+
     // Debug logging
-    console.log('🔧 Debug: Original Model:', model);
-    console.log('🔧 Debug: Actual Model:', actualModel);
-    console.log('🔧 Debug: Input Params:', inputParams);
-    
+    console.log("🔧 Debug: Original Model:", model);
+    console.log("🔧 Debug: Actual Model:", actualModel);
+    console.log("🔧 Debug: Input Params:", inputParams);
+
     const result = await fal.subscribe(actualModel, {
       input: inputParams,
       logs: true,
       onQueueUpdate: (update) => {
-        console.log('📡 Queue Update:', update);
+        console.log("📡 Queue Update:", update);
         if (update.status === "IN_PROGRESS") {
           update.logs.map((log) => log.message).forEach(console.log);
         }
       },
     });
-    
+
     // Debug the full result
-    console.log('🎯 Final Result:', result);
-    
-	// Could be multiple images
+    console.log("🎯 Final Result:", result);
+
+    // Could be multiple images
     if (result.data && result.data.images) {
       return result.data.images[0].url;
     }
-    
+
     // Check for errors in the response
     if (result.data && result.data.error) {
       throw new Error(`API Error: ${result.data.error}`);
     }
-    
+
     return null;
   }
 
@@ -151,77 +147,76 @@ const createFalApi = () => {
    */
   async function generateSeedanceVideo(model, options) {
     const { prompt, image_url, ...otherOptions } = options;
-    
+
     // Validate inputs
-    if (!model || typeof model !== 'string') {
-      throw new Error('Invalid model specified');
+    if (!model || typeof model !== "string") {
+      throw new Error("Invalid model specified");
     }
-    
-    if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
-      throw new Error('Prompt is required');
+
+    if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+      throw new Error("Prompt is required");
     }
-    
+
     // Prepare input parameters - clean up undefined values
     /** @type {any} */
     const inputParams = { prompt: prompt.trim() };
-    
+
     // Add other options only if they have valid values
-    Object.keys(otherOptions).forEach(key => {
+    Object.keys(otherOptions).forEach((key) => {
       const value = otherOptions[key];
-      if (value !== undefined && value !== null && value !== '') {
+      if (value !== undefined && value !== null && value !== "") {
         inputParams[key] = value;
       }
     });
-    
+
     // Add image URL if provided
     if (image_url) {
       inputParams.image_url = image_url;
     }
-    
+
     // Debug logging
-    console.log('🎬 Debug: Video Model:', model);
-    console.log('🎬 Debug: Video Input Params:', inputParams);
-    
+    console.log("🎬 Debug: Video Model:", model);
+    console.log("🎬 Debug: Video Input Params:", inputParams);
+
     try {
       // Get headers with API key
       const headers = getRequestHeaders();
-      
+
       const result = await fal.subscribe(model, {
         input: inputParams,
         logs: true,
         headers: headers,
         onQueueUpdate: (update) => {
-          console.log('🎬 Video Queue Update:', update);
+          console.log("🎬 Video Queue Update:", update);
           if (update.status === "IN_PROGRESS" && update.logs) {
             update.logs.map((log) => log.message).forEach(console.log);
           }
         },
       });
-      
+
       // Debug the full result
-      console.log('🎬 Video Final Result:', result);
-      
+      console.log("🎬 Video Final Result:", result);
+
       // Check for video in response
       if (result?.data?.video?.url) {
         return result.data.video.url;
       }
-      
+
       // Check for errors in the response
       if (result?.data?.error) {
         throw new Error(`API Error: ${result.data.error}`);
       }
-      
-      console.warn('No video URL found in response:', result);
+
+      console.warn("No video URL found in response:", result);
       return null;
-      
     } catch (error) {
-      console.error('Video generation error:', error);
+      console.error("Video generation error:", error);
       throw error;
     }
   }
 
   return {
-	generateFluxImage,
+    generateFluxImage,
     generateSeedanceImageToVideo,
     generateSeedanceVideo,
   };

@@ -9,6 +9,7 @@
   import FluxorController from "$lib/windows/fluxor/FluxorController.svelte.js";
   import AboutController from "$lib/windows/about/AboutController.svelte";
   import ImageGalleryController from "$lib/windows/image-gallery/ImageGalleryController.js";
+  import VideoGalleryController from "$lib/windows/video-gallery/VideoGalleryController.js";
   import SettingsController from "$lib/windows/settings/SettingsController.svelte.js";
   import CinematOrController from "$lib/windows/cinemator/CinematOrController.svelte.js";
   // Initialize window manager and theme manager on page load
@@ -53,6 +54,10 @@
     <button class="desktop-icon" on:click={ImageGalleryController.openImageGalleryWindow}>
       <div class="icon">🖼️</div>
       <div class="label">Image Gallery</div>
+    </button>
+    <button class="desktop-icon" on:click={VideoGalleryController.openVideoGalleryWindow}>
+      <div class="icon">🎥</div>
+      <div class="label">Video Gallery</div>
     </button>
     <button class="desktop-icon" on:click={SettingsController.openSettingsWindow}>
       <div class="icon">⚙️</div>

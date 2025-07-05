@@ -12,12 +12,9 @@ function openCinematOrWindow() {
       props: {},
     },
     width: 700,
-    height: 800,
+    height: 500,
     x: 200,
     y: 50,
-    resizable: true,
-    minimizable: true,
-    maximizable: true,
   });
 }
 

@@ -64,4 +64,4 @@
  * @property {string} filename - Generated filename
  */
 
-/** @typedef {"fal-ai/flux-pro/v1.1-ultra" | "fal-ai/flux-pro/kontext"} Model */
+/** @typedef {"fal-ai/flux-pro/v1.1-ultra" | "fal-ai/flux-pro/kontext" | "fal-ai/flux-pro/kontext/text-to-image" | "fal-ai/bytedance/seedance/v1/pro/text-to-video" | "fal-ai/bytedance/seedance/v1/pro/image-to-video"} Model */

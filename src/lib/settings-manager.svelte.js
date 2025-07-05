@@ -112,6 +112,7 @@ function createSettingsManager() {
     return trimmed.length > 10; // Basic length check
   }
 
+
   // Auto-load settings when manager is created
   if (typeof window !== 'undefined') {
     loadSettings();
@@ -130,7 +131,8 @@ function createSettingsManager() {
     resetSettings,
     clearSettings,
     hasApiKey,
-    validateApiKey
+    validateApiKey,
+    
   };
 }
 

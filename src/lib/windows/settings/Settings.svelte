@@ -21,6 +21,7 @@
     hasChanges = localApiKey !== currentApiKey;
   });
 
+
   /**
    * Save settings
    */

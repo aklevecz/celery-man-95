@@ -4,7 +4,10 @@
       "Bash(nvm list:*)",
       "Bash(mkdir:*)",
       "WebFetch(domain:fal.ai)",
-      "WebFetch(domain:fal.ai)"
+      "WebFetch(domain:fal.ai)",
+      "Bash(npm run dev:*)",
+      "WebFetch(domain:docs.fal.ai)",
+      "WebFetch(domain:www.fal.ai)"
     ],
     "deny": []
   }

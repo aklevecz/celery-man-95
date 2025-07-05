@@ -29,8 +29,6 @@
   // Generated video state
   /** @type {string | null} */
   let generatedVideoUrl = $state(null);
-  /** @type {Array<import('$lib/video-storage.svelte.js').SavedVideo>} */
-  let savedVideos = $state([]);
 
   // Configuration options
   const aspectRatios = ['21:9', '16:9', '4:3', '1:1', '3:4', '9:16'];
@@ -38,13 +36,7 @@
   const durations = ['5', '10'];
   const acceptedFileTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
 
-  // Load saved videos on component mount
-  function loadSavedVideos() {
-    savedVideos = videoStorage.getSavedVideosMetadata();
-  }
-
-  // Initialize
-  loadSavedVideos();
+  // Initialize component
 
   /**
    * Convert file to base64 data URI
@@ -273,8 +265,6 @@
         selectedFile?.name
       );
       
-      loadSavedVideos(); // Refresh the saved videos list
-      
     } catch (/** @type {*} */ err) {
       console.error('Failed to save video:', err);
       error = `Failed to save video: ${err.message}`;
@@ -293,49 +283,8 @@
     }
   }
 
-  /**
-   * Download a saved video
-   * @param {string} videoId - The ID of the saved video
-   * @param {string} filename - The filename to use for download
-   */
-  async function downloadSavedVideo(videoId, filename) {
-    try {
-      await videoStorage.downloadVideo(videoId, filename);
-    } catch (/** @type {*} */ err) {
-      error = `Failed to download video: ${err.message}`;
-    }
-  }
 
-  /**
-   * Delete a saved video
-   * @param {string} videoId - The ID of the video to delete
-   */
-  async function deleteSavedVideo(videoId) {
-    if (confirm('Are you sure you want to delete this video?')) {
-      try {
-        await videoStorage.deleteVideo(videoId);
-        loadSavedVideos(); // Refresh the list
-      } catch (/** @type {*} */ err) {
-        error = `Failed to delete video: ${err.message}`;
-      }
-    }
-  }
 
-  /**
-   * Load a saved video for preview
-   * @param {string} videoId - The ID of the saved video to load
-   */
-  async function loadSavedVideoPreview(videoId) {
-    try {
-      const objectURL = await videoStorage.getVideoObjectURL(videoId);
-      if (objectURL) {
-        generatedVideoUrl = objectURL;
-        error = '';
-      }
-    } catch (/** @type {*} */ err) {
-      error = `Failed to load video: ${err.message}`;
-    }
-  }
 
   /**
    * Handle keyboard events in the prompt textarea
@@ -535,55 +484,5 @@
       </div>
     {/if}
 
-    <!-- Saved Videos Gallery -->
-    {#if savedVideos.length > 0}
-      <div class="p-4 border-t border-gray-500">
-        <h3 class="m-0 mb-3 text-lg font-bold text-black">Saved Videos ({savedVideos.length})</h3>
-        <div class="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
-          {#each savedVideos as savedVideo}
-            <div class="border border-gray-500 bg-gray-300 p-2 flex flex-col gap-2">
-              <button 
-                class="w-full h-20 bg-gray-200 border border-gray-500 flex items-center justify-center cursor-pointer text-3xl p-0 font-sans hover:bg-gray-300 btn-outset"
-                onclick={() => loadSavedVideoPreview(savedVideo.id)}
-                title="Click to preview: {savedVideo.prompt.substring(0, 50)}"
-              >
-                🎬
-              </button>
-              
-              <div class="text-sm text-black">
-                <div class="font-bold mb-1 leading-tight" title={savedVideo.prompt}>
-                  {savedVideo.prompt.length > 40 ? savedVideo.prompt.substring(0, 40) + '...' : savedVideo.prompt}
-                </div>
-                
-                <div class="text-xs text-gray-600 mb-1">
-                  {savedVideo.mode} • {savedVideo.parameters?.resolution || 'Unknown'} • {savedVideo.parameters?.duration || '?'}s
-                </div>
-                
-                <div class="text-xs text-gray-600 mb-2">
-                  {new Date(savedVideo.timestamp).toLocaleDateString()}
-                </div>
-                
-                <div class="flex gap-1">
-                  <button 
-                    class="flex-1 px-2 py-1 border border-gray-400 bg-gray-300 text-black text-xs cursor-pointer btn-outset hover:bg-gray-400"
-                    onclick={() => downloadSavedVideo(savedVideo.id, savedVideo.filename)}
-                    title="Download"
-                  >
-                    ⬇ Download
-                  </button>
-                  <button 
-                    class="px-2 py-1 border border-gray-400 bg-red-200 text-black text-xs cursor-pointer btn-outset hover:bg-red-300"
-                    onclick={() => deleteSavedVideo(savedVideo.id)}
-                    title="Delete"
-                  >
-                    🗑
-                  </button>
-                </div>
-              </div>
-            </div>
-          {/each}
-        </div>
-      </div>
-    {/if}
   </div>
 </div>

@@ -184,7 +184,7 @@
     background: var(--theme-window);
     color: var(--theme-text);
     padding: 4px;
-    height: calc(100% - 48px);
+    height: calc(100% - 32px);
     overflow: auto;
     border-top: 1px inset var(--theme-windowBorder);
     box-sizing: border-box;
