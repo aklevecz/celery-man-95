@@ -7,7 +7,9 @@
       "WebFetch(domain:fal.ai)",
       "Bash(npm run dev:*)",
       "WebFetch(domain:docs.fal.ai)",
-      "WebFetch(domain:www.fal.ai)"
+      "WebFetch(domain:www.fal.ai)",
+      "mcp__ide__getDiagnostics",
+      "Bash(rg:*)"
     ],
     "deny": []
   }

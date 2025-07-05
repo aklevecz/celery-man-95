@@ -1,5 +1,4 @@
 import { fal } from "@fal-ai/client";
-import { settingsManager } from "$lib/settings-manager.svelte.js";
 
 /** @type {Record<string, Model>} */
 export const models = {
@@ -27,40 +26,32 @@ const createFalApi = () => {
     proxyUrl: "/api/fal/proxy",
   });
 
-  // Function to get request headers with API key
-  function getRequestHeaders() {
-    const headers = {};
-    try {
-      const clientApiKey = settingsManager.getSetting("falApiKey");
-      if (clientApiKey && clientApiKey.trim()) {
-        headers["x-fal-client-key"] = clientApiKey.trim();
-      }
-    } catch (error) {
-      console.warn("Error getting API key:", error);
-    }
-    return headers;
-  }
+  // /**
+  //  * Function to get request headers with API key
+  //  * @returns {Record<string, string>} Headers object
+  //  */
+  // function getRequestHeaders() {
+  //   /** @type {Record<string, string>} */
+  //   const headers = {};
+  //   try {
+  //     const clientApiKey = settingsManager.getSetting("falApiKey");
+  //     if (clientApiKey && clientApiKey.trim()) {
+  //       headers["x-fal-client-key"] = clientApiKey.trim();
+  //     }
+  //   } catch (error) {
+  //     console.warn("Error getting API key:", error);
+  //   }
+  //   return headers;
+  // }
 
   /**
    * Generate an image using FLUX models from fal.ai
    * @param {Model} model - The model to use
-   * @param {Object} options - The options for image generation
-   * @param {string} options.prompt - The text prompt for image generation
-   * @param {string} [options.image_url] - Optional reference image URL for image-to-image generation (required for Kontext model)
-   * @param {number} [options.seed] - The seed for reproducible results
-   * @param {number} [options.num_images=1] - Number of images to generate (1-4)
-   * @param {string} [options.aspect_ratio="16:9"] - Aspect ratio of the image
-   * @param {string} [options.output_format="jpeg"] - Output format (jpeg/png)
-   * @param {boolean} [options.enable_safety_checker=true] - Enable safety checker
-   * @param {string} [options.safety_tolerance="2"] - Safety tolerance level (1-6)
-   * @param {boolean} [options.raw=false] - Generate less processed images
-   * @param {number} [options.guidance_scale] - Controls how closely the model follows the prompt
-   * @param {number} [options.num_inference_steps=28] - Number of inference steps (1-50)
+   * @param {ImageGenerationOptions} options - The options for image generation
    * @returns {Promise<string | null>} - The URL of the generated image, or null on failure
    */
   async function generateFluxImage(model, options) {
     const { prompt, image_url, ...otherOptions } = options;
-    console.log(image_url);
     // For FLUX Kontext, choose the correct endpoint based on whether image_url is provided
     let actualModel = model;
     if (model === models.flux_kontext_pro) {
@@ -72,8 +63,8 @@ const createFalApi = () => {
         actualModel = models.flux_kontext_pro_text_to_image;
       }
     }
-    console.log(actualModel);
     // Prepare input parameters
+    /** @type {Record<string, any>} */
     const inputParams = { prompt, ...otherOptions };
     if (image_url) {
       inputParams.image_url = image_url;
@@ -115,6 +106,7 @@ const createFalApi = () => {
    * Generate an image using fal.ai via server endpoint
    * @param {string} prompt - The text prompt for image generation
    * @param {string} imageBase64 - The base64-encoded image data
+   * @returns {Promise<string>} - The URL of the generated video
    */
   async function generateSeedanceImageToVideo(prompt, imageBase64) {
     const result = await fal.subscribe("fal-ai/bytedance/seedance/v1/pro/image-to-video", {
@@ -140,18 +132,13 @@ const createFalApi = () => {
   /**
    * Generate a video using Seedance models from fal.ai
    * @param {Model} model - The Seedance model to use
-   * @param {Object} options - The options for video generation
-   * @param {string} options.prompt - The text prompt for video generation
-   * @param {string} [options.image_url] - Optional image URL for image-to-video generation
-   * @param {string} [options.aspect_ratio="16:9"] - Aspect ratio (21:9, 16:9, 4:3, 1:1, 3:4, 9:16)
-   * @param {string} [options.resolution="1080p"] - Resolution (480p, 1080p)
-   * @param {string} [options.duration="5"] - Duration in seconds (5, 10)
-   * @param {boolean} [options.camera_fixed=false] - Whether to fix camera position
-   * @param {number} [options.seed] - Seed for reproducible results
+   * @param {VideoGenerationOptions} options - The options for video generation
    * @returns {Promise<string | null>} - The URL of the generated video, or null on failure
    */
   async function generateSeedanceVideo(model, options) {
     const { prompt, image_url, ...otherOptions } = options;
+    /** @type {Record<string, any>} */
+    const otherOpts = otherOptions;
 
     // Validate inputs
     if (!model || typeof model !== "string") {
@@ -163,12 +150,12 @@ const createFalApi = () => {
     }
 
     // Prepare input parameters - clean up undefined values
-    /** @type {any} */
+    /** @type {Record<string, any>} */
     const inputParams = { prompt: prompt.trim() };
 
     // Add other options only if they have valid values
-    Object.keys(otherOptions).forEach((key) => {
-      const value = otherOptions[key];
+    Object.keys(otherOpts).forEach((key) => {
+      const value = otherOpts[key];
       if (value !== undefined && value !== null && value !== "") {
         inputParams[key] = value;
       }
@@ -184,14 +171,12 @@ const createFalApi = () => {
     console.log("🎬 Debug: Video Input Params:", inputParams);
 
     try {
-      // Get headers with API key
-      const headers = getRequestHeaders();
+      // Get headers with API key (for future use)
+      // const headers = getRequestHeaders();
 
       const result = await fal.subscribe(model, {
         input: inputParams,
         logs: true,
-        // Im confused whether this is actually needed
-        headers: headers,
         onQueueUpdate: (update) => {
           console.log("🎬 Video Queue Update:", update);
           if (update.status === "IN_PROGRESS" && update.logs) {
@@ -223,52 +208,54 @@ const createFalApi = () => {
 
   /**
    * Test WebSocket connection using fal.realtime.connect
-   * @returns {Promise<Object>} Test result with status and data
+   * @returns {Promise<TestResult>} Test result with status and data
    */
   async function testRealTime() {
     return new Promise((resolve, reject) => {
       console.log("🔗 Testing WebSocket connection...");
-      const connection = fal.realtime.connect("fal-ai/fast-turbo-diffusion", {
-        onResult: (result) => {
-          console.log(result);
-        },
-        onError: (error) => {
-          console.error(error);
-        },
-      });
-      console.log(connection);
-      connection.send({
-        prompt: "a cat",
-        seed: 6252023,
-        image_size: "landscape_4_3",
-        num_images: 1,
-      });
-
-      // const connection = fal.realtime.connect("fal-ai/flux/dev", {
+      // const connection = fal.realtime.connect("fal-ai/fast-turbo-diffusion", {
       //   onResult: (result) => {
-      //     console.log("✅ WebSocket success:", result);
-      //     resolve({
-      //       success: true,
-      //       message: "WebSocket connection successful!",
-      //       data: result,
-      //     });
+      //     console.log(result);
       //   },
       //   onError: (error) => {
-      //     console.error("❌ WebSocket error:", error);
-      //     reject({
-      //       success: false,
-      //       message: `WebSocket connection failed: ${error.message || error}`,
-      //       error: error,
-      //     });
+      //     console.error(error);
       //   },
       // });
-
-      // // Send a simple test request
+      // console.log(connection);
       // connection.send({
-      //   prompt: "simple test image of a red circle",
+      //   prompt: "a cat",
+      //   seed: 6252023,
+      //   image_size: "landscape_4_3",
       //   num_images: 1,
-      //   image_size: "square",
       // });
+
+      const realTimeModel = "fal-ai/fast-turbo-diffusion";
+
+      const connection = fal.realtime.connect(realTimeModel, {
+        onResult: (result) => {
+          console.log("✅ WebSocket success:", result);
+          resolve({
+            success: true,
+            message: "WebSocket connection successful!",
+            data: result,
+          });
+        },
+        onError: (error) => {
+          console.error("❌ WebSocket error:", error);
+          reject({
+            success: false,
+            message: `WebSocket connection failed: ${error.message || error}`,
+            error: error,
+          });
+        },
+      });
+
+      // Send a simple test request
+      connection.send({
+        prompt: "simple test image of a red circle",
+        num_images: 1,
+        image_size: "square",
+      });
 
       // Set a timeout in case the connection hangs
       setTimeout(() => {
@@ -280,25 +267,22 @@ const createFalApi = () => {
       }, 30000);
     });
 
-    async function uploadFile() {
-      const file = new File(["Hello, World!"], "hello.txt", { type: "text/plain" });
-      const url = await fal.storage.upload(file);
-    }
+    // async function uploadFile() {
+    //   const file = new File(["Hello, World!"], "hello.txt", { type: "text/plain" });
+    //   const url = await fal.storage.upload(file);
+    // }
   }
 
   /**
    * Upscale an image using FAL.AI upscaling models
    * @param {Model} model - The upscaling model to use
-   * @param {Object} options - The options for image upscaling
-   * @param {string} options.image_url - The image URL to upscale (required)
-   * @param {number} [options.scale_factor=2] - Upscaling factor (2, 4, 6, 8)
-   * @param {string} [options.model_type] - Model variant (for models that support it)
-   * @param {boolean} [options.enhance_face=false] - Enable face enhancement
-   * @param {boolean} [options.reduce_noise=true] - Enable noise reduction
+   * @param {UpscalingOptions} options - The options for image upscaling
    * @returns {Promise<string | null>} - The URL of the upscaled image, or null on failure
    */
   async function generateUpscaledImage(model, options) {
     const { image_url, scale_factor = 2, ...otherOptions } = options;
+    /** @type {Record<string, any>} */
+    const otherOpts = otherOptions;
 
     // Validate inputs
     if (!model || typeof model !== "string") {
@@ -310,16 +294,17 @@ const createFalApi = () => {
     }
 
     // Prepare input parameters
+    /** @type {Record<string, any>} */
     const inputParams = { image_url };
-    
+
     // Add scale factor if supported by model
     if (model.includes("esrgan") || model.includes("clarity") || model.includes("creative")) {
       inputParams.scale_factor = scale_factor;
     }
 
     // Add other options only if they have valid values
-    Object.keys(otherOptions).forEach((key) => {
-      const value = otherOptions[key];
+    Object.keys(otherOpts).forEach((key) => {
+      const value = otherOpts[key];
       if (value !== undefined && value !== null && value !== "") {
         inputParams[key] = value;
       }

@@ -3,20 +3,30 @@
   import { imageManager } from "$lib/image-manager.svelte.js";
 
   /** @type {Model} */
-  let model = $state(models.flux_kontext_pro)
+  let model = $state(models.flux_kontext_pro);
+  /** @type {string} */
   let prompt = $state("");
+  /** @type {string} */
   let seed = $state("");
+  /** @type {AspectRatio} */
   let aspectRatio = $state("16:9");
+  /** @type {OutputFormat} */
   let outputFormat = $state("jpeg");
+  /** @type {number} */
   let numImages = $state(1);
+  /** @type {boolean} */
   let enableSafetyChecker = $state(false);
+  /** @type {SafetyTolerance} */
   let safetyTolerance = $state("6");
+  /** @type {boolean} */
   let raw = $state(false);
+  /** @type {boolean} */
   let isGenerating = $state(false);
   /** @type {string | null} */
   let generatedImage = $state(null);
+  /** @type {string} */
   let error = $state("");
-  
+
   // Image input state
   /** @type {string | null} */
   let referenceImageUrl = $state(null);
@@ -24,14 +34,18 @@
   let selectedFile = $state(null);
   let isDragOver = $state(false);
 
-  const aspectRatios = ["21:9", "16:9", "4:3", "3:2", "1:1", "2:3", "3:4", "9:16", "9:21"];
+  /** @type {AspectRatio[]} */
+  const aspectRatios = ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16"];
+  /** @type {OutputFormat[]} */
   const outputFormats = ["jpeg", "png"];
+  /** @type {SafetyTolerance[]} */
   const safetyTolerances = ["1", "2", "3", "4", "5", "6"];
   const acceptedFileTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif", "image/avif"];
-  
+
+  /** @type {Array<{key: string, value: string, label: string, description: string}>} */
   const modelOptions = [
     { key: "flux_pro_1_1_ultra", value: models.flux_pro_1_1_ultra, label: "FLUX Pro 1.1 Ultra", description: "High-quality text-to-image generation" },
-    { key: "flux_kontext_pro", value: models.flux_kontext_pro, label: "FLUX Kontext Pro", description: "Text-to-image + image editing capabilities" }
+    { key: "flux_kontext_pro", value: models.flux_kontext_pro, label: "FLUX Kontext Pro", description: "Text-to-image + image editing capabilities" },
   ];
 
   /**
@@ -44,10 +58,10 @@
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result;
-        if (typeof result === 'string') {
+        if (typeof result === "string") {
           resolve(result);
         } else {
-          reject(new Error('Failed to read file as string'));
+          reject(new Error("Failed to read file as string"));
         }
       };
       reader.onerror = reject;
@@ -96,7 +110,7 @@
     if (event) {
       event.stopPropagation();
     }
-    
+
     selectedFile = null;
     referenceImageUrl = null;
     // Reset file input
@@ -127,11 +141,11 @@
   async function handleDrop(event) {
     event.preventDefault();
     isDragOver = false;
-    
+
     // Check for image URL data (from gallery drag)
-    const imageUrl = event.dataTransfer?.getData('text/uri-list') || event.dataTransfer?.getData('text/plain');
-    
-    if (imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('blob:') || imageUrl.startsWith('data:'))) {
+    const imageUrl = event.dataTransfer?.getData("text/uri-list") || event.dataTransfer?.getData("text/plain");
+
+    if (imageUrl && (imageUrl.startsWith("http") || imageUrl.startsWith("blob:") || imageUrl.startsWith("data:"))) {
       // Handle dragged image URL from gallery
       try {
         referenceImageUrl = imageUrl;
@@ -143,7 +157,7 @@
       }
       return;
     }
-    
+
     // Handle file drops
     const files = event.dataTransfer?.files;
     if (files && files.length > 0) {
@@ -159,6 +173,7 @@
     generatedImage = null;
 
     try {
+      /** @type {ImageGenerationOptions} */
       const options = {
         prompt,
         aspect_ratio: aspectRatio,
@@ -170,13 +185,13 @@
         seed: seed.trim() ? parseInt(seed) : Math.floor(Math.random() * 1000000),
       };
 
-      console.log(referenceImageUrl)
+      console.log(referenceImageUrl);
 
       // Add image_url if reference image is provided (works with any model that supports it)
       if (referenceImageUrl) {
         let imageData = referenceImageUrl;
-        
-        if (referenceImageUrl.startsWith('blob:')) {
+
+        if (referenceImageUrl.startsWith("blob:")) {
           // Convert blob URL to data URI
           try {
             const response = await fetch(referenceImageUrl);
@@ -185,10 +200,10 @@
               const reader = new FileReader();
               reader.onload = () => {
                 const result = reader.result;
-                if (typeof result === 'string') {
+                if (typeof result === "string") {
                   resolve(result);
                 } else {
-                  resolve('');
+                  resolve("");
                 }
               };
               reader.readAsDataURL(blob);
@@ -200,11 +215,9 @@
             return;
           }
         }
-        
-        // Add image_url to options (need to cast to any to avoid TypeScript error)
-        /** @type {any} */
-        const optionsWithImage = options;
-        optionsWithImage.image_url = imageData;
+
+        // Add image_url to options
+        options.image_url = imageData;
       }
 
       const imageUrl = await falApi.generateFluxImage(model, options);
@@ -251,20 +264,26 @@
   <div class="p-4 border-b border-gray-500">
     <!-- Reference Image Input Section -->
     <div class="mb-4">
-      <label class="block mb-2 text-lg font-bold">
-        Reference Image (optional):
-      </label>
-      <div 
+      <label for="reference-image-input" class="block mb-2 text-lg font-bold"> Reference Image (optional): </label>
+      <div
         class="border-2 border-dashed border-gray-400 rounded p-4 text-center cursor-pointer transition-colors {isDragOver ? 'border-blue-500 bg-blue-50' : 'hover:border-gray-600'}"
+        role="button"
+        tabindex="0"
         ondragover={handleDragOver}
         ondragleave={handleDragLeave}
         ondrop={handleDrop}
-        onclick={() => document.getElementById('reference-image-input')?.click()}
+        onclick={() => document.getElementById("reference-image-input")?.click()}
+        onkeydown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            document.getElementById("reference-image-input")?.click();
+          }
+        }}
       >
         {#if referenceImageUrl}
           <div class="relative">
             <img src={referenceImageUrl} alt="Reference" class="max-w-full max-h-32 mx-auto border border-gray-500 rounded" />
-            <button 
+            <button
               class="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white text-xs rounded-full hover:bg-red-600 flex items-center justify-center"
               onclick={(event) => clearReferenceImage(event)}
               title="Remove image"
@@ -282,13 +301,7 @@
           </div>
         {/if}
       </div>
-      <input 
-        id="reference-image-input"
-        type="file" 
-        accept="image/*"
-        class="hidden"
-        onchange={handleFileSelect}
-      />
+      <input id="reference-image-input" type="file" accept="image/*" class="hidden" onchange={handleFileSelect} />
     </div>
 
     <label for="prompt-input" class="block mb-2 text-lg font-bold">Enter your prompt:</label>
@@ -310,7 +323,7 @@
           {/each}
         </select>
         <p class="text-xs text-gray-600 mt-1">
-          {modelOptions.find(m => m.value === model)?.description || ""}
+          {modelOptions.find((m) => m.value === model)?.description || ""}
         </p>
       </div>
 
@@ -334,7 +347,7 @@
 
       <div>
         <label for="seed" class="block mb-1 text-base font-bold">Seed (optional):</label>
-        <input id="seed" type="number" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={seed} placeholder="Random">
+        <input id="seed" type="number" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={seed} placeholder="Random" />
       </div>
 
       <div>
@@ -348,14 +361,14 @@
 
       <div class="flex items-center">
         <label class="flex items-center text-base font-bold">
-          <input type="checkbox" class="mr-2" bind:checked={enableSafetyChecker}>
+          <input type="checkbox" class="mr-2" bind:checked={enableSafetyChecker} />
           Safety Checker
         </label>
       </div>
 
       <div class="flex items-center">
         <label class="flex items-center text-base font-bold">
-          <input type="checkbox" class="mr-2" bind:checked={raw}>
+          <input type="checkbox" class="mr-2" bind:checked={raw} />
           Raw (Natural)
         </label>
       </div>
@@ -392,7 +405,7 @@
   <div class="flex-1 overflow-auto flex flex-col">
     {#if generatedImage}
       <div class="p-4 text-center flex items-center justify-center">
-        <button 
+        <button
           class="border-0 p-0 bg-transparent cursor-pointer"
           onclick={() => generatedImage && imageManager.previewImage(generatedImage, { prompt, title: "Generated Image" })}
           title="Click to view full size"
