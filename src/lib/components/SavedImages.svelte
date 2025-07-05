@@ -1,6 +1,7 @@
 <script>
   import { imageManager } from "$lib/image-manager.svelte.js";
   import { onDestroy } from "svelte";
+  import UpscalerController from "$lib/windows/upscaler/UpscalerController.svelte.js";
   let { savedImages, error = $bindable(), generatedImage = $bindable() } = $props();
 
   /** @type {IntersectionObserver | null} */
@@ -25,7 +26,7 @@
       (entries) => {
         entries.forEach(async (entry) => {
           if (entry.isIntersecting) {
-            const imageId = entry.target.getAttribute('data-image-id');
+            const imageId = entry.target.getAttribute("data-image-id");
             if (imageId && !loadedImages.has(imageId)) {
               loadedImages.add(imageId);
               await imageManager.getImageUrl(imageId);
@@ -36,15 +37,15 @@
         });
       },
       {
-        rootMargin: '50px', // Start loading 50px before the image becomes visible
-        threshold: 0.1
+        rootMargin: "50px", // Start loading 50px before the image becomes visible
+        threshold: 0.1,
       }
     );
 
     // Observe all image containers
     setTimeout(() => {
-      const imageContainers = document.querySelectorAll('[data-image-id]');
-      imageContainers.forEach(container => {
+      const imageContainers = document.querySelectorAll("[data-image-id]");
+      imageContainers.forEach((container) => {
         intersectionObserver?.observe(container);
       });
     }, 0);
@@ -61,12 +62,12 @@
     if (intersectionObserver) {
       intersectionObserver.disconnect();
     }
-    
+
     // Release references for all images this component was using
     for (const image of loadedImages) {
       imageManager.releaseImageUrl(image);
     }
-    
+
     // URLs are now cleaned up immediately when references drop to 0
   });
 
@@ -119,20 +120,20 @@
     const objectURL = await imageManager.getImageUrl(imageId);
     if (objectURL && event.dataTransfer) {
       // Set the image URL for drag and drop
-      event.dataTransfer.setData('text/uri-list', objectURL);
-      event.dataTransfer.setData('text/plain', objectURL);
-      event.dataTransfer.effectAllowed = 'copy';
+      event.dataTransfer.setData("text/uri-list", objectURL);
+      event.dataTransfer.setData("text/plain", objectURL);
+      event.dataTransfer.effectAllowed = "copy";
     }
   }
 </script>
 
 <div class="p-1 border-t border-gray-500 h-full">
   <h3 class="m-0 mb-2 text-base font-bold text-black">Saved Images ({savedImages.length})</h3>
-  <div class="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2 max-h-0 overflow-y- bg-red-300 h-full">
+  <div class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3 overflow-y-auto h-full">
     {#each savedImages as savedImage (savedImage.id)}
       <div class="border border-inset border-gray-500 bg-gray-300 p-2 flex flex-col gap-1" data-image-id={savedImage.id}>
         <button
-          class="w-full h-30 bg-gray-200 border border-inset border-gray-500 flex items-center justify-center cursor-pointer text-2xl p-0 font-sans hover:bg-gray-300"
+          class="w-full aspect-square bg-gray-200 border border-inset border-gray-500 flex items-center justify-center cursor-pointer text-2xl p-0 font-sans hover:bg-gray-300"
           onclick={() => loadSavedImagePreview(savedImage.id)}
           ondblclick={() => openImagePreview(savedImage.id, savedImage)}
           aria-label="Click to load, double-click to preview full size: {savedImage.prompt.substring(0, 50)}"
@@ -141,7 +142,7 @@
           ondragstart={(event) => handleDragStart(event, savedImage.id)}
         >
           <div>
-            <img src={imageManager.imageUrls[savedImage.id] || "favicon.svg"} alt="Saved generation thumbnail" class="" draggable="false" />
+            <img src={imageManager.imageUrls[savedImage.id] || "favicon.svg"} alt="Saved generation thumbnail" class="w-full h-full object-cover" draggable="false" />
           </div>
         </button>
         <div class="text-base text-black">
@@ -166,6 +167,13 @@
               title="Download"
             >
               ⬇
+            </button>
+            <button
+              class="w-4 h-4 border border-outset border-gray-300 bg-gray-300 text-black text-xs cursor-pointer flex items-center justify-center p-0 leading-none hover:bg-green-200 active:border-inset"
+              onclick={() => UpscalerController.openUpscalerWindow()}
+              title="Upscale Image"
+            >
+              🔍
             </button>
             <button
               class="w-4 h-4 border border-outset border-gray-300 bg-gray-300 text-black text-xs cursor-pointer flex items-center justify-center p-0 leading-none hover:bg-red-200 active:border-inset"

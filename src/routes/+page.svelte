@@ -12,6 +12,7 @@
   import VideoGalleryController from "$lib/windows/video-gallery/VideoGalleryController.js";
   import SettingsController from "$lib/windows/settings/SettingsController.svelte.js";
   import CinematOrController from "$lib/windows/cinemator/CinematOrController.svelte.js";
+  import UpscalerController from "$lib/windows/upscaler/UpscalerController.svelte.js";
   // Initialize window manager and theme manager on page load
   onMount(() => {
     windowManager.loadWindowState();
@@ -67,6 +68,10 @@
       <div class="icon">🎬</div>
       <div class="label">Cinemator</div>
     </button>
+    <button class="desktop-icon" on:click={UpscalerController.openUpscalerWindow}>
+      <div class="icon">🔍</div>
+      <div class="label">Upscaler</div>
+    </button>
   </div>
 
   <!-- Theme Switcher -->
@@ -96,6 +101,9 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 20px;
+    width: 100px;
+    height: 90%;
+    flex-wrap: wrap;
   }
 
   .desktop-icon {

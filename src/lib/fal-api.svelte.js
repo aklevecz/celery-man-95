@@ -8,6 +8,11 @@ export const models = {
   flux_kontext_pro_text_to_image: "fal-ai/flux-pro/kontext/text-to-image",
   seedance_pro_text_to_video: "fal-ai/bytedance/seedance/v1/pro/text-to-video",
   seedance_pro_image_to_video: "fal-ai/bytedance/seedance/v1/pro/image-to-video",
+  clarity_upscaler: "fal-ai/clarity-upscaler",
+  esrgan: "fal-ai/esrgan",
+  creative_upscaler: "fal-ai/creative-upscaler",
+  aura_sr: "fal-ai/aura-sr",
+  fooocus_upscale: "fal-ai/fooocus/upscale-or-vary",
 };
 
 // Response examples
@@ -185,6 +190,7 @@ const createFalApi = () => {
       const result = await fal.subscribe(model, {
         input: inputParams,
         logs: true,
+        // Im confused whether this is actually needed
         headers: headers,
         onQueueUpdate: (update) => {
           console.log("🎬 Video Queue Update:", update);
@@ -215,10 +221,158 @@ const createFalApi = () => {
     }
   }
 
+  /**
+   * Test WebSocket connection using fal.realtime.connect
+   * @returns {Promise<Object>} Test result with status and data
+   */
+  async function testRealTime() {
+    return new Promise((resolve, reject) => {
+      console.log("🔗 Testing WebSocket connection...");
+      const connection = fal.realtime.connect("fal-ai/fast-turbo-diffusion", {
+        onResult: (result) => {
+          console.log(result);
+        },
+        onError: (error) => {
+          console.error(error);
+        },
+      });
+      console.log(connection);
+      connection.send({
+        prompt: "a cat",
+        seed: 6252023,
+        image_size: "landscape_4_3",
+        num_images: 1,
+      });
+
+      // const connection = fal.realtime.connect("fal-ai/flux/dev", {
+      //   onResult: (result) => {
+      //     console.log("✅ WebSocket success:", result);
+      //     resolve({
+      //       success: true,
+      //       message: "WebSocket connection successful!",
+      //       data: result,
+      //     });
+      //   },
+      //   onError: (error) => {
+      //     console.error("❌ WebSocket error:", error);
+      //     reject({
+      //       success: false,
+      //       message: `WebSocket connection failed: ${error.message || error}`,
+      //       error: error,
+      //     });
+      //   },
+      // });
+
+      // // Send a simple test request
+      // connection.send({
+      //   prompt: "simple test image of a red circle",
+      //   num_images: 1,
+      //   image_size: "square",
+      // });
+
+      // Set a timeout in case the connection hangs
+      setTimeout(() => {
+        reject({
+          success: false,
+          message: "WebSocket connection timed out after 30 seconds",
+          error: "Timeout",
+        });
+      }, 30000);
+    });
+
+    async function uploadFile() {
+      const file = new File(["Hello, World!"], "hello.txt", { type: "text/plain" });
+      const url = await fal.storage.upload(file);
+    }
+  }
+
+  /**
+   * Upscale an image using FAL.AI upscaling models
+   * @param {Model} model - The upscaling model to use
+   * @param {Object} options - The options for image upscaling
+   * @param {string} options.image_url - The image URL to upscale (required)
+   * @param {number} [options.scale_factor=2] - Upscaling factor (2, 4, 6, 8)
+   * @param {string} [options.model_type] - Model variant (for models that support it)
+   * @param {boolean} [options.enhance_face=false] - Enable face enhancement
+   * @param {boolean} [options.reduce_noise=true] - Enable noise reduction
+   * @returns {Promise<string | null>} - The URL of the upscaled image, or null on failure
+   */
+  async function generateUpscaledImage(model, options) {
+    const { image_url, scale_factor = 2, ...otherOptions } = options;
+
+    // Validate inputs
+    if (!model || typeof model !== "string") {
+      throw new Error("Invalid model specified");
+    }
+
+    if (!image_url || typeof image_url !== "string") {
+      throw new Error("Image URL is required");
+    }
+
+    // Prepare input parameters
+    const inputParams = { image_url };
+    
+    // Add scale factor if supported by model
+    if (model.includes("esrgan") || model.includes("clarity") || model.includes("creative")) {
+      inputParams.scale_factor = scale_factor;
+    }
+
+    // Add other options only if they have valid values
+    Object.keys(otherOptions).forEach((key) => {
+      const value = otherOptions[key];
+      if (value !== undefined && value !== null && value !== "") {
+        inputParams[key] = value;
+      }
+    });
+
+    // Debug logging
+    console.log("🔍 Debug: Upscaling Model:", model);
+    console.log("🔍 Debug: Upscaling Input Params:", inputParams);
+
+    try {
+      const result = await fal.subscribe(model, {
+        input: inputParams,
+        logs: true,
+        onQueueUpdate: (update) => {
+          console.log("🔍 Upscaling Queue Update:", update);
+          if (update.status === "IN_PROGRESS" && update.logs) {
+            update.logs.map((log) => log.message).forEach(console.log);
+          }
+        },
+      });
+
+      // Debug the full result
+      console.log("🔍 Upscaling Final Result:", result);
+
+      // Check for image in response
+      if (result?.data?.image?.url) {
+        return result.data.image.url;
+      }
+
+      // Some models return images array
+      if (result?.data?.images && result.data.images.length > 0) {
+        return result.data.images[0].url;
+      }
+
+      // Check for errors in the response
+      if (result?.data?.error) {
+        throw new Error(`API Error: ${result.data.error}`);
+      }
+
+      console.warn("No image URL found in upscaling response:", result);
+      return null;
+    } catch (error) {
+      console.error("Image upscaling error:", error);
+      throw error;
+    }
+  }
+
   return {
     generateFluxImage,
     generateSeedanceImageToVideo,
     generateSeedanceVideo,
+    generateUpscaledImage,
+    testRealTime,
   };
 };
 

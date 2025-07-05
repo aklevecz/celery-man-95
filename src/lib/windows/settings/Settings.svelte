@@ -1,12 +1,17 @@
 <script>
   import { settingsManager } from "$lib/settings-manager.svelte.js";
   import { themeManager } from "$lib/theme-manager.svelte.js";
+  import falApi from "$lib/fal-api.svelte.js";
 
   // Local state for form handling
   let localApiKey = $state('');
   let showApiKey = $state(false);
   let hasChanges = $state(false);
   let saveStatus = $state(''); // 'saving', 'saved', 'error'
+  
+  // WebSocket test state
+  let wsTestStatus = $state(''); // 'testing', 'success', 'error'
+  let wsTestMessage = $state('');
 
   // Load current settings when component mounts
   $effect(() => {
@@ -82,6 +87,38 @@
   }
 
   /**
+   * Test WebSocket connection
+   */
+  async function testWebSocket() {
+    wsTestStatus = 'testing';
+    wsTestMessage = 'Testing WebSocket connection...';
+    
+    try {
+      // Save API key first if there are changes
+      if (hasChanges) {
+        await saveSettings();
+      }
+      
+      const result = await falApi.testRealTime();
+      wsTestStatus = 'success';
+      wsTestMessage = result.message;
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => {
+        if (wsTestStatus === 'success') {
+          wsTestMessage = '';
+          wsTestStatus = '';
+        }
+      }, 5000);
+      
+    } catch (error) {
+      console.error('WebSocket test failed:', error);
+      wsTestStatus = 'error';
+      wsTestMessage = error.message || 'WebSocket test failed';
+    }
+  }
+
+  /**
    * Handle keyboard shortcut for save
    * @param {KeyboardEvent} event 
    */
@@ -150,6 +187,37 @@
             ⚠️ No API key configured - using server default (if available)
           </div>
         {/if}
+      </div>
+    </div>
+
+    <!-- WebSocket Test Section -->
+    <div class="mb-6">
+      <h3 class="text-lg font-bold text-black mb-3 border-b border-gray-400 pb-1">WebSocket Connection Test</h3>
+      
+      <div class="bg-gray-200 border border-gray-500 p-3">
+        <div class="mb-3">
+          <p class="text-sm text-gray-600 mb-2">
+            Test the WebSocket connection to FAL.AI using your configured API key.
+          </p>
+          
+          {#if wsTestMessage}
+            <div class="text-sm mb-2 p-2 border rounded {wsTestStatus === 'error' ? 'bg-red-100 border-red-300 text-red-600' : wsTestStatus === 'success' ? 'bg-green-100 border-green-300 text-green-600' : 'bg-blue-100 border-blue-300 text-blue-600'}">
+              {wsTestMessage}
+            </div>
+          {/if}
+        </div>
+
+        <button
+          class="px-4 py-2 border border-gray-400 bg-gray-300 text-black text-sm font-bold cursor-pointer btn-outset hover:bg-gray-400 disabled:bg-gray-400 disabled:text-gray-500 disabled:cursor-not-allowed"
+          onclick={testWebSocket}
+          disabled={wsTestStatus === 'testing'}
+        >
+          {wsTestStatus === 'testing' ? 'Testing Connection...' : 'Test WebSocket Connection'}
+        </button>
+        
+        <div class="text-xs text-gray-600 mt-2">
+          <p>This will test real-time connection to FAL.AI and generate a simple test image.</p>
+        </div>
       </div>
     </div>
 
