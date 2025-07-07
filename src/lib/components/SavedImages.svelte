@@ -173,20 +173,25 @@
             >
               👁
             </button>
-            <button
-              class="w-4 h-4 border border-outset border-gray-300 bg-gray-300 text-black text-xs cursor-pointer flex items-center justify-center p-0 leading-none hover:bg-gray-400 active:border-inset"
-              onclick={() => {
-                const sanitizedPrompt = savedImage.prompt.substring(0, 50)
-                  .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special characters
-                  .replace(/\s+/g, '_') // Replace spaces with underscores
-                  .toLowerCase();
-                const filename = `${sanitizedPrompt}_${savedImage.timestamp}.png`;
-                imageManager.downloadImage(savedImage.id, filename);
-              }}
-              title="Download"
-            >
-              ⬇
-            </button>
+            <div class="relative inline-block">
+              <select
+                class="w-4 h-4 text-xs border border-outset border-gray-300 bg-gray-300 text-black cursor-pointer hover:bg-gray-400 active:border-inset appearance-none text-center p-0"
+                onchange={(event) => {
+                  const target = /** @type {HTMLSelectElement} */ (event.target);
+                  const value = /** @type {'image' | 'metadata' | 'both'} */ (target.value);
+                  if (value) {
+                    imageManager.downloadWithMetadata(savedImage.id, value);
+                    target.value = ''; // Reset selection
+                  }
+                }}
+                title="Download Options"
+              >
+                <option value="">⬇</option>
+                <option value="image">Image Only</option>
+                <option value="metadata">Metadata Only</option>
+                <option value="both">Image + Metadata</option>
+              </select>
+            </div>
             <button
               class="w-4 h-4 border border-outset border-gray-300 bg-gray-300 text-black text-xs cursor-pointer flex items-center justify-center p-0 leading-none hover:bg-green-200 active:border-inset"
               onclick={() => UpscalerController.openUpscalerWindow()}

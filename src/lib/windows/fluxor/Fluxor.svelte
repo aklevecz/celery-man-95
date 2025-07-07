@@ -93,7 +93,7 @@
   let showRandomPromptSection = $state(false);
 
   // Image description state
-  /** @type {'prompt' | 'artistic' | 'technical'} */
+  /** @type {'prompt' | 'artistic' | 'technical' | 'subject' | 'style'} */
   let imageDescriptionStyle = $state('prompt');
   /** @type {boolean} */
   let imageAppendMode = $state(false);
@@ -333,6 +333,9 @@
     generatedImage = null;
 
     try {
+      // Calculate seed value for both API and storage
+      const parsedSeed = seed.trim() ? parseInt(seed) : Math.floor(Math.random() * 1000000);
+      
       /** @type {ImageGenerationOptions} */
       const options = {
         prompt,
@@ -342,7 +345,7 @@
         enable_safety_checker: enableSafetyChecker,
         safety_tolerance: safetyTolerance,
         raw,
-        seed: seed.trim() ? parseInt(seed) : Math.floor(Math.random() * 1000000),
+        seed: parsedSeed,
       };
 
       // Determine which image to use as reference
@@ -369,7 +372,7 @@
         finalReferenceImage = referenceImageUrl;
       }
       
-      console.log("Final reference image:", finalReferenceImage);
+      // console.log("Final reference image:", finalReferenceImage);
 
       // Add image_url if reference image is provided
       if (finalReferenceImage) {
@@ -407,7 +410,24 @@
       const imageUrl = await falApi.generateFluxImage(model, options);
       if (imageUrl) {
         generatedImage = imageUrl;
-        await imageManager.saveImage(imageUrl, prompt);
+        
+        // Prepare generation parameters for storage
+        /** @type {GenerationParams} */
+        const generationParams = {
+          model,
+          seed: parsedSeed,
+          aspectRatio,
+          outputFormat,
+          numImages,
+          enableSafetyChecker,
+          safetyTolerance,
+          raw,
+          guidanceScale: options.guidance_scale,
+          numInferenceSteps: options.num_inference_steps,
+          hasReferenceImage: !!options.image_url // Just store boolean flag instead of the data
+        };
+        
+        await imageManager.saveImage(imageUrl, prompt, generationParams);
       } else {
         error = "Failed to generate image";
       }
@@ -510,7 +530,9 @@
    * @param {File | string} image - Image file or URL to analyze
    */
   async function describeImageToPrompt(image) {
+
     try {
+      console.log(imageDescriptionStyle)
       const description = await geminiApi.describeImage({
         image,
         style: imageDescriptionStyle,
@@ -664,20 +686,36 @@
                     <select 
                       class="text-xs border border-gray-500 p-1 bg-white text-black"
                       bind:value={imageDescriptionStyle}
+                      onclick={(e) => e.stopPropagation()}
+                      onchange={(e) => e.stopPropagation()}
                     >
                       <option value="prompt">Generate Prompt</option>
+                      <option value="subject">Describe Subject</option>
+                      <option value="style">Describe Style & Lighting</option>
                       <option value="artistic">Artistic Analysis</option>
                       <option value="technical">Technical Description</option>
                     </select>
                     <label class="flex items-center text-xs">
-                      <input type="checkbox" class="mr-1" bind:checked={imageAppendMode}>
+                      <input 
+                        type="checkbox" 
+                        class="mr-1" 
+                        bind:checked={imageAppendMode}
+                        onclick={(e) => e.stopPropagation()}
+                        onchange={(e) => e.stopPropagation()}
+                      >
                       Append
                     </label>
                   </div>
                   <button
                     class="px-2 py-1 text-xs border border-gray-400 bg-gray-300 text-black cursor-pointer btn-outset hover:bg-gray-400 disabled:bg-gray-400 disabled:text-gray-500 disabled:cursor-not-allowed"
-                    onclick={() => describeImageToPrompt(selectedFile || referenceImageUrl)}
-                    disabled={geminiApi.isGenerating}
+                    onclick={(e) => {
+                      e.stopPropagation();
+                      const imageToDescribe = selectedFile || referenceImageUrl;
+                      if (imageToDescribe) {
+                        describeImageToPrompt(imageToDescribe);
+                      }
+                    }}
+                    disabled={geminiApi.isGenerating || (!selectedFile && !referenceImageUrl)}
                   >
                     {geminiApi.isGenerating ? 'Analyzing...' : 'Describe Image 🔍'}
                   </button>

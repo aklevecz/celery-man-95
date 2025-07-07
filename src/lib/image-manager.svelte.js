@@ -43,13 +43,14 @@ function createImageManager() {
    * Save an image to storage
    * @param {string} imageUrl - The URL of the image to save
    * @param {string} prompt - The prompt used to generate the image
+   * @param {GenerationParams} [generationParams] - All generation parameters used
    */
-  async function saveImage(imageUrl, prompt) {
+  async function saveImage(imageUrl, prompt, generationParams = null) {
     if (!imageUrl || !prompt.trim()) return;
 
     try {
       isSaving = true;
-      await imageStorage.saveImage(imageUrl, prompt);
+      await imageStorage.saveImage(imageUrl, prompt, generationParams);
       await loadSavedImages();
       await generateAllImageUrls();
       error = "";
@@ -304,6 +305,91 @@ function createImageManager() {
     }
   }
 
+  /**
+   * Generate a better filename from prompt
+   * @param {string} prompt - The full prompt
+   * @param {number} timestamp - Timestamp for uniqueness
+   * @returns {string} - Generated filename
+   */
+  function generateBetterFilename(prompt, timestamp) {
+    // Take first 40 chars, remove special chars, replace spaces with underscores
+    const sanitized = prompt.substring(0, 40)
+      .replace(/[^a-zA-Z0-9\s]/g, '')
+      .replace(/\s+/g, '_')
+      .toLowerCase()
+      .replace(/^_+|_+$/g, ''); // Remove leading/trailing underscores
+    
+    return sanitized ? `${sanitized}_${timestamp}.png` : `image_${timestamp}.png`;
+  }
+
+  /**
+   * Create metadata JSON content
+   * @param {SavedImage} savedImage - The saved image data
+   * @returns {string} - JSON string for metadata file
+   */
+  function createMetadataJson(savedImage) {
+    const metadata = {
+      prompt: savedImage.prompt,
+      generationParams: savedImage.generationParams || {},
+      metadata: {
+        timestamp: savedImage.timestamp,
+        imageId: savedImage.id,
+        originalUrl: savedImage.url,
+        filename: savedImage.filename
+      }
+    };
+    
+    return JSON.stringify(metadata, null, 2);
+  }
+
+  /**
+   * Download metadata as JSON file
+   * @param {string} content - JSON content
+   * @param {string} filename - Base filename (without extension)
+   */
+  function downloadMetadata(content, filename) {
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename.replace(/\.(png|jpg|jpeg)$/i, '.json');
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Enhanced download with options
+   * @param {string} imageId - The ID of the image to download
+   * @param {'image' | 'metadata' | 'both'} downloadType - What to download
+   */
+  async function downloadWithMetadata(imageId, downloadType = 'image') {
+    try {
+      // Find the saved image data
+      const savedImage = savedImages.find(img => img.id === imageId);
+      if (!savedImage) {
+        throw new Error('Image not found');
+      }
+
+      // Generate better filename
+      const filename = generateBetterFilename(savedImage.prompt, savedImage.timestamp);
+      
+      if (downloadType === 'image' || downloadType === 'both') {
+        // Download the image
+        await imageStorage.downloadSavedImage(imageId, filename);
+      }
+      
+      if (downloadType === 'metadata' || downloadType === 'both') {
+        // Download metadata JSON
+        const metadataContent = createMetadataJson(savedImage);
+        downloadMetadata(metadataContent, filename);
+      }
+      
+      error = "";
+    } catch (/** @type {any} */ err) {
+      error = `Failed to download: ${err.message}`;
+    }
+  }
+
   // Auto-load saved images on initialization
   loadSavedImages();
 
@@ -354,6 +440,7 @@ function createImageManager() {
     forceCleanupUnreferenced,
     releaseImageUrl,
     downloadImageFromUrl,
+    downloadWithMetadata,
     previewImage,
   };
 }

@@ -50,9 +50,10 @@ async function urlToBlob(imageUrl) {
  * Save image to IndexedDB and metadata to localStorage
  * @param {string} imageUrl - Image URL to save
  * @param {string} prompt - The prompt used to generate this image
+ * @param {GenerationParams} [generationParams] - All generation parameters used
  * @returns {Promise<string>} - Returns the saved image ID
  */
-async function saveImage(imageUrl, prompt) {
+async function saveImage(imageUrl, prompt, generationParams = null) {
   try {
     await initDB();
 
@@ -79,11 +80,23 @@ async function saveImage(imageUrl, prompt) {
     /** @type {SavedImage} */
     const metadata = {
       id,
-      prompt: prompt.substring(0, 200), // Limit prompt length
+      prompt: prompt, // Keep complete prompt (no truncation)
       url: imageUrl,
       timestamp,
       filename,
+      generationParams
     };
+
+    // Safety check: if generationParams contains large data, remove it
+    if (generationParams && typeof generationParams === 'object') {
+      // Remove any properties that might contain large data URLs
+      const safeParams = { ...generationParams };
+      if ('referenceImageUrl' in safeParams && typeof safeParams.referenceImageUrl === 'string' && safeParams.referenceImageUrl.length > 100) {
+        delete safeParams.referenceImageUrl;
+        safeParams.hasReferenceImage = true;
+      }
+      metadata.generationParams = safeParams;
+    }
 
     const savedImages = getSavedImagesMetadata();
     savedImages.unshift(metadata); // Add to beginning of array

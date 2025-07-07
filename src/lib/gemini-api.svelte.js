@@ -11,7 +11,7 @@ import { settingsManager } from "$lib/settings-manager.svelte.js";
 /**
  * @typedef {Object} ImageDescriptionOptions
  * @property {File | string} image - Image file or URL to analyze
- * @property {'prompt' | 'artistic' | 'technical'} [style] - Style of description
+ * @property {'prompt' | 'artistic' | 'technical' | 'subject' | 'style'} [style] - Style of description
  * @property {boolean} [appendMode] - Whether to append to existing prompt or replace
  */
 
@@ -31,7 +31,6 @@ function createGeminiApi() {
    */
   function initializeGemini() {
     const apiKey = settingsManager.getSetting("geminiApiKey");
-    console.log(apiKey)
     if (!apiKey || !apiKey.trim()) {
       error = "Gemini API key not configured. Please add it in Settings.";
       return false;
@@ -113,7 +112,9 @@ function createGeminiApi() {
       const styleInstructions = {
         prompt: 'Analyze this image and create a detailed prompt that could be used to generate a similar image with AI. Focus on describing the visual elements, composition, lighting, style, mood, and any artistic techniques that would help recreate this image.',
         artistic: 'Provide an artistic analysis of this image, describing the composition, color palette, artistic style, visual techniques, mood, and aesthetic qualities.',
-        technical: 'Provide a technical description of this image, including composition, lighting setup, camera perspective, visual elements, and technical aspects.'
+        technical: 'Provide a technical description of this image, including composition, lighting setup, camera perspective, visual elements, and technical aspects.',
+        subject: 'Focus on describing the main subject(s) of this image. Describe what is shown, the objects, people, or elements present, their appearance, poses, and relationships to each other. Keep the description focused on the subject matter rather than lighting or style.',
+        style: 'Focus on describing the style, lighting, mood, and visual techniques used in this image. Describe the lighting setup, color palette, artistic style, and atmosphere. Do not describe the subject.'
       };
 
       const systemPrompt = `You are a professional image analyst. ${styleInstructions[style]}
@@ -121,11 +122,14 @@ function createGeminiApi() {
 Requirements:
 - Be specific and detailed in your description
 - Focus on visual elements that are clearly observable
-- Include details about: subjects, setting, lighting, composition, colors, style, mood
 - Keep the description comprehensive but concise (50-200 words)
 - For prompt style: format as an AI image generation prompt
+- For subject style: focus only on what is shown in the image (objects, people, elements)
+- For style style: focus only on lighting, artistic techniques, mood, and visual style. Do not describe the subject in the scene
 - For artistic style: focus on artistic techniques and aesthetic qualities  
 - For technical style: focus on technical aspects and composition principles
+
+your response should be only a description that would be used in a subsequent image generation prompt.
 
 Analyze this image:`;
 
@@ -176,11 +180,11 @@ Analyze this image:`;
     error = "";
 
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
       // Build the system prompt based on style
       const styleInstructions = {
-        detailed: "Create a highly detailed, descriptive prompt with specific details about lighting, composition, colors, textures, and artistic techniques.",
+        detailed: "Create a highly detailed, descriptive prompt with specific details about lighting, composition.",
         artistic: "Create an artistic prompt emphasizing creative expression, unique perspectives, and artistic techniques or styles.",
         realistic: "Create a photorealistic prompt focusing on natural lighting, realistic proportions, and authentic details.",
         cinematic: "Create a cinematic prompt with dramatic lighting, composition techniques, and movie-like atmosphere.",
@@ -189,13 +193,14 @@ Analyze this image:`;
       const systemPrompt = `You are a professional AI image prompt generator. Your task is to create compelling, detailed prompts for AI image generation based on a given scene premise.
 
 Requirements:
-- Generate a single, comprehensive prompt (not multiple options)
+- Generate a single, comprehensive prompt describing the scene (not multiple options)
 - ${styleInstructions[style]}
 - Include specific details about: subject, setting, lighting, composition, style, mood
 - Make it vivid and descriptive but concise (aim for 50-150 words)
 - Focus on visual elements that would help an AI create a compelling image
 - Avoid overly complex or contradictory instructions
 - Don't include technical camera settings unless specifically relevant
+- Place the subject or person in the scene, but do not describe them.
 
 Scene premise: "${scenePremise}"
 Style: ${style}

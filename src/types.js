@@ -56,12 +56,28 @@
  */
 
 /**
+ * @typedef {Object} GenerationParams
+ * @property {Model} model - The model used for generation
+ * @property {number} [seed] - The seed used for generation
+ * @property {AspectRatio} [aspectRatio] - Aspect ratio of the image
+ * @property {OutputFormat} [outputFormat] - Output format
+ * @property {number} [numImages] - Number of images generated
+ * @property {boolean} [enableSafetyChecker] - Whether safety checker was enabled
+ * @property {SafetyTolerance} [safetyTolerance] - Safety tolerance level
+ * @property {boolean} [raw] - Whether raw mode was enabled
+ * @property {number} [guidanceScale] - Guidance scale value
+ * @property {number} [numInferenceSteps] - Number of inference steps
+ * @property {boolean} [hasReferenceImage] - Whether a reference image was used (boolean flag only)
+ */
+
+/**
  * @typedef {Object} SavedImage
  * @property {string} id - Unique image ID
- * @property {string} prompt - The prompt used to generate the image
+ * @property {string} prompt - The complete prompt used to generate the image (no truncation)
  * @property {string} url - Original URL from the API
  * @property {number} timestamp - When the image was saved
  * @property {string} filename - Generated filename
+ * @property {GenerationParams} [generationParams] - All generation parameters used
  */
 
 /** @typedef {"fal-ai/flux-pro/v1.1-ultra" | "fal-ai/flux-pro/kontext" | "fal-ai/flux-pro/kontext/text-to-image" | "fal-ai/bytedance/seedance/v1/pro/text-to-video" | "fal-ai/bytedance/seedance/v1/pro/image-to-video" | "fal-ai/clarity-upscaler" | "fal-ai/esrgan" | "fal-ai/creative-upscaler" | "fal-ai/aura-sr" | "fal-ai/fooocus/upscale-or-vary" | "fal-ai/video-upscaler" | "fal-ai/topaz/upscale/video"} Model */
