@@ -110,28 +110,16 @@ function createGeminiApi() {
 
       // Build the system prompt based on style
       const styleInstructions = {
-        prompt: 'Analyze this image and create a detailed prompt that could be used to generate a similar image with AI. Focus on describing the visual elements, composition, lighting, style, mood, and any artistic techniques that would help recreate this image.',
-        artistic: 'Provide an artistic analysis of this image, describing the composition, color palette, artistic style, visual techniques, mood, and aesthetic qualities.',
-        technical: 'Provide a technical description of this image, including composition, lighting setup, camera perspective, visual elements, and technical aspects.',
-        subject: 'Focus on describing the main subject(s) of this image. Describe what is shown, the objects, people, or elements present, their appearance, poses, and relationships to each other. Keep the description focused on the subject matter rather than lighting or style.',
-        style: 'Focus on describing the style, lighting, mood, and visual techniques used in this image. Describe the lighting setup, color palette, artistic style, and atmosphere. Do not describe the subject.'
+        prompt: 'Describe this image in a way that could recreate it with AI image generation. Return only the descriptive text.',
+        artistic: 'Describe the artistic style, composition, and aesthetic qualities. Return only the descriptive text.',
+        technical: 'Describe the technical aspects: composition, lighting setup, camera perspective. Return only the descriptive text.',
+        subject: 'Describe only what is shown: objects, people, elements, their appearance and poses. Return only the descriptive text.',
+        style: 'Describe only the lighting, mood, color palette, and visual style. Do not mention subjects. Return only the descriptive text.'
       };
 
-      const systemPrompt = `You are a professional image analyst. ${styleInstructions[style]}
+      const systemPrompt = `${styleInstructions[style]}
 
-Requirements:
-- Be specific and detailed in your description
-- Focus on visual elements that are clearly observable
-- Keep the description comprehensive but concise (50-200 words)
-- For prompt style: format as an AI image generation prompt
-- For subject style: focus only on what is shown in the image (objects, people, elements)
-- For style style: focus only on lighting, artistic techniques, mood, and visual style. Do not describe the subject in the scene
-- For artistic style: focus on artistic techniques and aesthetic qualities  
-- For technical style: focus on technical aspects and composition principles
-
-your response should be only a description that would be used in a subsequent image generation prompt.
-
-Analyze this image:`;
+Respond with only a concise description (30-100 words) that could be used directly in an AI image prompt. Do not include phrases like "Generate an image" or "Create a picture". Just describe what you see.`;
 
       const result = await model.generateContent([
         systemPrompt,
