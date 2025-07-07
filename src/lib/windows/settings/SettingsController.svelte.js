@@ -15,9 +15,6 @@ function openSettingsWindow() {
     height: 600,
     x: 250,
     y: 100,
-    resizable: true,
-    minimizable: true,
-    maximizable: true,
   });
 }
 

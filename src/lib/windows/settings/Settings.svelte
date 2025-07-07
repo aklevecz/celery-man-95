@@ -5,7 +5,9 @@
 
   // Local state for form handling
   let localApiKey = $state('');
+  let localGeminiApiKey = $state('');
   let showApiKey = $state(false);
+  let showGeminiApiKey = $state(false);
   let hasChanges = $state(false);
   let saveStatus = $state(''); // 'saving', 'saved', 'error'
   
@@ -17,13 +19,15 @@
   $effect(() => {
     if (settingsManager.isLoaded) {
       localApiKey = settingsManager.getSetting('falApiKey') || '';
+      localGeminiApiKey = settingsManager.getSetting('geminiApiKey') || '';
     }
   });
 
   // Track changes
   $effect(() => {
     const currentApiKey = settingsManager.getSetting('falApiKey') || '';
-    hasChanges = localApiKey !== currentApiKey;
+    const currentGeminiApiKey = settingsManager.getSetting('geminiApiKey') || '';
+    hasChanges = localApiKey !== currentApiKey || localGeminiApiKey !== currentGeminiApiKey;
   });
 
 
@@ -40,8 +44,9 @@
         return;
       }
 
-      // Save API key
+      // Save API keys
       settingsManager.setSetting('falApiKey', localApiKey.trim());
+      settingsManager.setSetting('geminiApiKey', localGeminiApiKey.trim());
       
       saveStatus = 'saved';
       hasChanges = false;
@@ -62,6 +67,7 @@
    */
   function resetSettings() {
     localApiKey = '';
+    localGeminiApiKey = '';
     settingsManager.resetSettings();
     hasChanges = false;
     saveStatus = '';
@@ -71,8 +77,9 @@
    * Clear all stored settings
    */
   function clearAllSettings() {
-    if (confirm('Are you sure you want to clear all settings? This will remove your API key and reset all preferences.')) {
+    if (confirm('Are you sure you want to clear all settings? This will remove your API keys and reset all preferences.')) {
       localApiKey = '';
+      localGeminiApiKey = '';
       settingsManager.clearSettings();
       hasChanges = false;
       saveStatus = '';
@@ -84,6 +91,13 @@
    */
   function toggleApiKeyVisibility() {
     showApiKey = !showApiKey;
+  }
+
+  /**
+   * Toggle Gemini API key visibility
+   */
+  function toggleGeminiApiKeyVisibility() {
+    showGeminiApiKey = !showGeminiApiKey;
   }
 
   /**
@@ -111,7 +125,7 @@
         }
       }, 5000);
       
-    } catch (error) {
+    } catch (/** @type {*} */ error) {
       console.error('WebSocket test failed:', error);
       wsTestStatus = 'error';
       wsTestMessage = error.message || 'WebSocket test failed';
@@ -188,6 +202,46 @@
           </div>
         {/if}
       </div>
+
+      <div class="bg-gray-200 border border-gray-500 p-3 mb-4">
+        <div class="mb-3">
+          <label for="gemini-api-key" class="block text-sm font-bold text-black mb-2">
+            Gemini API Key (for Random Prompt Generation):
+          </label>
+          <div class="flex gap-2 items-center">
+            <input
+              id="gemini-api-key"
+              type={showGeminiApiKey ? 'text' : 'password'}
+              class="flex-1 border border-gray-500 p-2 text-sm bg-white text-black font-mono"
+              bind:value={localGeminiApiKey}
+              placeholder="Enter your Gemini API key..."
+              autocomplete="off"
+            />
+            <button
+              class="px-3 py-2 border border-gray-400 bg-gray-300 text-black text-sm font-bold cursor-pointer btn-outset hover:bg-gray-400"
+              onclick={toggleGeminiApiKeyVisibility}
+              title={showGeminiApiKey ? 'Hide API key' : 'Show API key'}
+            >
+              {showGeminiApiKey ? '🙈' : '👁️'}
+            </button>
+          </div>
+        </div>
+
+        <div class="text-xs text-gray-600 mb-2">
+          <p><strong>🔒 Security Note:</strong> Your API key is stored locally in your browser only.</p>
+          <p><strong>📖 Get API Key:</strong> Visit <a href="https://makersuite.google.com/app/apikey" target="_blank" class="text-blue-600 underline">Google AI Studio</a> to create a Gemini API key.</p>
+        </div>
+
+        {#if localGeminiApiKey.trim()}
+          <div class="text-xs text-green-600">
+            ✅ Gemini API key is configured
+          </div>
+        {:else}
+          <div class="text-xs text-orange-600">
+            ⚠️ No Gemini API key configured - random prompt generation will be disabled
+          </div>
+        {/if}
+      </div>
     </div>
 
     <!-- WebSocket Test Section -->
@@ -233,18 +287,18 @@
           <select 
             id="theme-select" 
             class="w-full border border-gray-500 p-2 text-sm bg-white text-black"
-            value={themeManager.currentTheme}
-            onchange={(e) => themeManager.setTheme(e.target.value)}
+            value={themeManager.currentTheme.id}
+            onchange={(/** @type {*} */ e) => themeManager.setTheme(e.target?.value || 'dark')}
           >
-            <option value="windows95">Windows 95</option>
-            <option value="windows98">Windows 98</option>
-            <option value="windowsxp">Windows XP</option>
-            <option value="windows2000">Windows 2000</option>
+            <option value="win95">Windows 95</option>
+            <option value="win98">Windows 98</option>
+            <option value="winxp">Windows XP</option>
+            <option value="win2000">Windows 2000</option>
           </select>
         </div>
         
         <div class="text-xs text-gray-600">
-          Current theme: <strong>{themeManager.currentTheme}</strong>
+          Current theme: <strong>{themeManager.currentTheme.name}</strong>
         </div>
       </div>
     </div>

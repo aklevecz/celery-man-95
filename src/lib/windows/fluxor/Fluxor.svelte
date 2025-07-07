@@ -1,6 +1,7 @@
 <script>
   import falApi, { models } from "$lib/fal-api.svelte.js";
   import { imageManager } from "$lib/image-manager.svelte.js";
+  import { geminiApi } from "$lib/gemini-api.svelte.js";
   import { 
     fileToReferenceImage, 
     stitchImages, 
@@ -80,6 +81,22 @@
   let referenceImageUrl = $state(null);
   /** @type {File | null} */
   let selectedFile = $state(null);
+
+  // Random prompt generation state
+  /** @type {string} */
+  let scenePremise = $state("");
+  /** @type {'detailed' | 'artistic' | 'realistic' | 'cinematic'} */
+  let promptStyle = $state('detailed');
+  /** @type {boolean} */
+  let appendMode = $state(false);
+  /** @type {boolean} */
+  let showRandomPromptSection = $state(false);
+
+  // Image description state
+  /** @type {'prompt' | 'artistic' | 'technical'} */
+  let imageDescriptionStyle = $state('prompt');
+  /** @type {boolean} */
+  let imageAppendMode = $state(false);
 
   /** @type {AspectRatio[]} */
   const aspectRatios = ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16"];
@@ -447,6 +464,70 @@
       link.click();
     }
   }
+
+  /**
+   * Generate a random prompt using Gemini AI
+   */
+  async function generateRandomPrompt() {
+    if (!scenePremise.trim()) {
+      error = "Please enter a scene premise first";
+      return;
+    }
+
+    try {
+      const generatedPrompt = await geminiApi.generatePrompt({
+        scenePremise,
+        style: promptStyle,
+        appendMode
+      });
+
+      if (appendMode && prompt.trim()) {
+        prompt = `${prompt.trim()} ${generatedPrompt}`;
+      } else {
+        prompt = generatedPrompt;
+      }
+
+      error = "";
+    } catch (/** @type {any} */ err) {
+      error = err.message || "Failed to generate random prompt";
+    }
+  }
+
+  /**
+   * Set scene premise from predefined category
+   * @param {string} category - The category ID
+   */
+  function setScenePremise(category) {
+    const categories = geminiApi.getSceneCategories();
+    const selectedCategory = categories.find(c => c.id === category);
+    if (selectedCategory) {
+      scenePremise = selectedCategory.label.toLowerCase();
+    }
+  }
+
+  /**
+   * Describe an image using Gemini Vision
+   * @param {File | string} image - Image file or URL to analyze
+   */
+  async function describeImageToPrompt(image) {
+    try {
+      const description = await geminiApi.describeImage({
+        image,
+        style: imageDescriptionStyle,
+        appendMode: imageAppendMode
+      });
+
+      if (imageAppendMode && prompt.trim()) {
+        prompt = `${prompt.trim()} ${description}`;
+      } else {
+        prompt = description;
+      }
+
+      error = "";
+    } catch (/** @type {any} */ err) {
+      error = err.message || "Failed to describe image";
+    }
+  }
 </script>
 
 <div class="flex flex-col h-full font-sans bg-gray-300 text-black">
@@ -576,6 +657,32 @@
                 ×
               </button>
               <p class="mt-2 text-sm text-gray-600">{selectedFile?.name}</p>
+              
+              {#if geminiApi.isAvailable()}
+                <div class="mt-2 flex flex-col gap-2">
+                  <div class="flex gap-2 items-center">
+                    <select 
+                      class="text-xs border border-gray-500 p-1 bg-white text-black"
+                      bind:value={imageDescriptionStyle}
+                    >
+                      <option value="prompt">Generate Prompt</option>
+                      <option value="artistic">Artistic Analysis</option>
+                      <option value="technical">Technical Description</option>
+                    </select>
+                    <label class="flex items-center text-xs">
+                      <input type="checkbox" class="mr-1" bind:checked={imageAppendMode}>
+                      Append
+                    </label>
+                  </div>
+                  <button
+                    class="px-2 py-1 text-xs border border-gray-400 bg-gray-300 text-black cursor-pointer btn-outset hover:bg-gray-400 disabled:bg-gray-400 disabled:text-gray-500 disabled:cursor-not-allowed"
+                    onclick={() => describeImageToPrompt(selectedFile || referenceImageUrl)}
+                    disabled={geminiApi.isGenerating}
+                  >
+                    {geminiApi.isGenerating ? 'Analyzing...' : 'Describe Image 🔍'}
+                  </button>
+                </div>
+              {/if}
             </div>
           {:else}
             <div class="py-8">
@@ -597,7 +704,90 @@
       />
     </div>
 
-    <label for="prompt-input" class="block mb-2 text-lg font-bold">Enter your prompt:</label>
+    <div class="flex items-center justify-between mb-2">
+      <label for="prompt-input" class="text-lg font-bold">Enter your prompt:</label>
+      {#if geminiApi.isAvailable()}
+        <button
+          class="px-3 py-1 text-sm border border-gray-400 bg-gray-300 text-black cursor-pointer btn-outset hover:bg-gray-400"
+          onclick={() => showRandomPromptSection = !showRandomPromptSection}
+        >
+          {showRandomPromptSection ? 'Hide' : 'Random Prompt'} 🎲
+        </button>
+      {/if}
+    </div>
+
+    {#if showRandomPromptSection && geminiApi.isAvailable()}
+      <div class="bg-gray-200 border border-gray-500 p-3 mb-3 rounded">
+        <h4 class="text-sm font-bold mb-2">🎲 Random Prompt Generator</h4>
+        
+        <!-- Quick category buttons -->
+        <div class="mb-3">
+          <label class="block text-xs font-bold mb-1">Quick Categories:</label>
+          <div class="flex flex-wrap gap-1">
+            {#each geminiApi.getSceneCategories().slice(0, 6) as category}
+              <button
+                class="px-2 py-1 text-xs border border-gray-400 bg-white text-black cursor-pointer hover:bg-gray-100"
+                onclick={() => setScenePremise(category.id)}
+                title={category.description}
+              >
+                {category.label}
+              </button>
+            {/each}
+          </div>
+        </div>
+
+        <!-- Custom scene premise -->
+        <div class="mb-3">
+          <label for="scene-premise" class="block text-xs font-bold mb-1">Scene Premise:</label>
+          <input
+            id="scene-premise"
+            type="text"
+            class="w-full border border-gray-500 p-2 text-sm bg-white text-black"
+            bind:value={scenePremise}
+            placeholder="e.g., mountain landscape, portrait, cyberpunk city..."
+          />
+        </div>
+
+        <!-- Style and options -->
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <div>
+            <label for="prompt-style" class="block text-xs font-bold mb-1">Style:</label>
+            <select id="prompt-style" class="w-full border border-gray-500 p-1 text-xs bg-white text-black" bind:value={promptStyle}>
+              {#each geminiApi.getStyleOptions() as style}
+                <option value={style.id}>{style.label}</option>
+              {/each}
+            </select>
+          </div>
+          <div class="flex items-end">
+            <label class="flex items-center text-xs">
+              <input type="checkbox" class="mr-1" bind:checked={appendMode}>
+              Append to existing prompt
+            </label>
+          </div>
+        </div>
+
+        <!-- Generate button -->
+        <div class="flex items-center gap-2">
+          <button
+            class="px-3 py-2 border border-gray-400 bg-gray-300 text-black text-sm font-bold cursor-pointer btn-outset hover:bg-gray-400 disabled:bg-gray-400 disabled:text-gray-500 disabled:cursor-not-allowed"
+            onclick={generateRandomPrompt}
+            disabled={geminiApi.isGenerating || !scenePremise.trim()}
+          >
+            {geminiApi.isGenerating ? 'Generating...' : 'Generate Random Prompt'}
+          </button>
+          {#if geminiApi.error}
+            <span class="text-xs text-red-600">⚠️ {geminiApi.error}</span>
+          {/if}
+        </div>
+      </div>
+    {:else if !geminiApi.isAvailable()}
+      <div class="bg-orange-100 border border-orange-300 p-2 mb-3 rounded">
+        <p class="text-xs text-orange-700">
+          💡 Add a Gemini API key in Settings to enable random prompt generation for benchmarking.
+        </p>
+      </div>
+    {/if}
+
     <textarea
       id="prompt-input"
       class="w-full h-24 border border-gray-500 p-3 text-lg font-sans resize-y bg-white text-black box-border disabled:bg-gray-200 disabled:text-gray-600"

@@ -1,8 +1,9 @@
 <script>
   import { imageManager } from "$lib/image-manager.svelte.js";
+  import { geminiApi } from "$lib/gemini-api.svelte.js";
   import { onDestroy } from "svelte";
   import UpscalerController from "$lib/windows/upscaler/UpscalerController.svelte.js";
-  let { savedImages, error = $bindable(), generatedImage = $bindable() } = $props();
+  let { savedImages, error = $bindable(), generatedImage = $bindable(), onDescribeImage = $bindable() } = $props();
 
   /** @type {IntersectionObserver | null} */
   let intersectionObserver = null;
@@ -125,6 +126,17 @@
       event.dataTransfer.effectAllowed = "copy";
     }
   }
+
+  /**
+   * Describe a saved image using Gemini Vision
+   * @param {string} imageId - The ID of the saved image
+   */
+  async function describeSavedImage(imageId) {
+    const objectURL = await imageManager.getImageUrl(imageId);
+    if (objectURL && onDescribeImage) {
+      onDescribeImage(objectURL);
+    }
+  }
 </script>
 
 <div class="p-1 border-t border-gray-500 h-full">
@@ -163,7 +175,14 @@
             </button>
             <button
               class="w-4 h-4 border border-outset border-gray-300 bg-gray-300 text-black text-xs cursor-pointer flex items-center justify-center p-0 leading-none hover:bg-gray-400 active:border-inset"
-              onclick={() => imageManager.downloadImage(savedImage.id, savedImage.filename)}
+              onclick={() => {
+                const sanitizedPrompt = savedImage.prompt.substring(0, 50)
+                  .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special characters
+                  .replace(/\s+/g, '_') // Replace spaces with underscores
+                  .toLowerCase();
+                const filename = `${sanitizedPrompt}_${savedImage.timestamp}.png`;
+                imageManager.downloadImage(savedImage.id, filename);
+              }}
               title="Download"
             >
               ⬇
@@ -175,6 +194,16 @@
             >
               🔍
             </button>
+            {#if geminiApi.isAvailable() && onDescribeImage}
+              <button
+                class="w-4 h-4 border border-outset border-gray-300 bg-gray-300 text-black text-xs cursor-pointer flex items-center justify-center p-0 leading-none hover:bg-blue-200 active:border-inset disabled:bg-gray-400 disabled:text-gray-500 disabled:cursor-not-allowed"
+                onclick={() => describeSavedImage(savedImage.id)}
+                disabled={geminiApi.isGenerating}
+                title="Describe Image"
+              >
+                🤖
+              </button>
+            {/if}
             <button
               class="w-4 h-4 border border-outset border-gray-300 bg-gray-300 text-black text-xs cursor-pointer flex items-center justify-center p-0 leading-none hover:bg-red-200 active:border-inset"
               onclick={() => deleteSavedImage(savedImage.id)}
