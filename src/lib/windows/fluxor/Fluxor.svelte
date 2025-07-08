@@ -42,6 +42,8 @@
   /** @type {string} */
   let prompt = $state("");
   /** @type {string} */
+  let scenePrompt = $state("");
+  /** @type {string} */
   let seed = $state("");
   /** @type {AspectRatio} */
   let aspectRatio = $state("16:9");
@@ -326,7 +328,7 @@
   }
 
   async function generateImage() {
-    if (!prompt.trim()) return;
+    if (!prompt.trim() && !scenePrompt.trim()) return;
 
     isGenerating = true;
     error = "";
@@ -336,9 +338,14 @@
       // Calculate seed value for both API and storage
       const parsedSeed = seed.trim() ? parseInt(seed) : Math.floor(Math.random() * 1000000);
       
+      // Combine main prompt with scene prompt
+      const combinedPrompt = scenePrompt.trim() 
+        ? `${prompt.trim()} ${scenePrompt.trim()}`.trim()
+        : prompt.trim();
+      
       /** @type {ImageGenerationOptions} */
       const options = {
-        prompt,
+        prompt: combinedPrompt,
         aspect_ratio: aspectRatio,
         output_format: outputFormat,
         num_images: numImages,
@@ -427,7 +434,7 @@
           hasReferenceImage: !!options.image_url // Just store boolean flag instead of the data
         };
         
-        await imageManager.saveImage(imageUrl, prompt, generationParams);
+        await imageManager.saveImage(imageUrl, combinedPrompt, generationParams);
       } else {
         error = "Failed to generate image";
       }
@@ -530,19 +537,17 @@
    * @param {File | string} image - Image file or URL to analyze
    */
   async function describeImageToPrompt(image) {
-
     try {
-      console.log(imageDescriptionStyle)
       const description = await geminiApi.describeImage({
         image,
         style: imageDescriptionStyle,
         appendMode: imageAppendMode
       });
 
-      if (imageAppendMode && prompt.trim()) {
-        prompt = `${prompt.trim()} ${description}`;
+      if (imageAppendMode && scenePrompt.trim()) {
+        scenePrompt = `${scenePrompt.trim()} ${description}`;
       } else {
-        prompt = description;
+        scenePrompt = description;
       }
 
       error = "";
@@ -835,6 +840,17 @@
       disabled={isGenerating}
     ></textarea>
 
+    <div class="mt-3">
+      <label for="scene-prompt-input" class="block mb-2 text-base font-bold">Scene Prompt (added to main prompt):</label>
+      <textarea
+        id="scene-prompt-input"
+        class="w-full h-16 border border-gray-500 p-2 text-sm font-sans resize-y bg-white text-black box-border disabled:bg-gray-200 disabled:text-gray-600"
+        bind:value={scenePrompt}
+        placeholder="Additional scene description (populated by image descriptions)..."
+        disabled={isGenerating}
+      ></textarea>
+    </div>
+
     <div class="grid grid-cols-3 gap-3 mt-3">
       <div>
         <label for="model-select" class="block mb-1 text-base font-bold">Model:</label>
@@ -899,7 +915,7 @@
       <button
         class="px-4 py-2 border border-gray-400 bg-gray-300 text-black text-lg font-bold cursor-pointer font-sans disabled:bg-gray-400 disabled:text-gray-500 disabled:cursor-not-allowed btn-outset"
         onclick={generateImage}
-        disabled={isGenerating || !prompt.trim()}
+        disabled={isGenerating || (!prompt.trim() && !scenePrompt.trim())}
       >
         {isGenerating ? "Generating..." : "Generate Image"}
       </button>
