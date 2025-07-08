@@ -80,6 +80,26 @@
  * @property {GenerationParams} [generationParams] - All generation parameters used
  */
 
+/**
+ * @typedef {Object} ImageAnalysis
+ * @property {string} type - Type of analysis ('prompt' | 'subject' | 'style' | 'artistic' | 'technical')
+ * @property {string} description - The generated description
+ * @property {number} timestamp - When the analysis was performed
+ */
+
+/**
+ * @typedef {Object} AnalyzedImage
+ * @property {string} id - Unique analyzed image ID
+ * @property {string} name - User-friendly name for the image
+ * @property {string} imageUrl - URL or path to the image
+ * @property {string} [thumbnailUrl] - Optional thumbnail URL
+ * @property {ImageAnalysis[]} analyses - Array of different analyses performed
+ * @property {string[]} [tags] - Optional tags for categorization
+ * @property {number} createdAt - When the image was added to the collection
+ * @property {number} updatedAt - When the image was last updated
+ * @property {string} [notes] - Optional user notes
+ */
+
 /** @typedef {"fal-ai/flux-pro/v1.1-ultra" | "fal-ai/flux-pro/kontext" | "fal-ai/flux-pro/kontext/text-to-image" | "fal-ai/bytedance/seedance/v1/pro/text-to-video" | "fal-ai/bytedance/seedance/v1/pro/image-to-video" | "fal-ai/clarity-upscaler" | "fal-ai/esrgan" | "fal-ai/creative-upscaler" | "fal-ai/aura-sr" | "fal-ai/fooocus/upscale-or-vary" | "fal-ai/video-upscaler" | "fal-ai/topaz/upscale/video"} Model */
 
 /**
