@@ -1,7 +1,9 @@
 <script>
-  import falApi, { models } from "$lib/fal-api.svelte.js";
+  import { models } from "$lib/fal-api.svelte.js";
+  import { fluxApiManager } from "$lib/flux-api-manager.svelte.js";
   import { imageManager } from "$lib/image-manager.svelte.js";
   import { geminiApi } from "$lib/gemini-api.svelte.js";
+  import { settingsManager } from "$lib/settings-manager.svelte.js";
   import { 
     fileToReferenceImage, 
     stitchImages, 
@@ -97,6 +99,15 @@
   // Image description state
   /** @type {'prompt' | 'artistic' | 'technical' | 'subject' | 'style'} */
   let imageDescriptionStyle = $state('prompt');
+
+  // Provider selection state
+  /** @type {'fal' | 'blackforest'} */
+  let preferredProvider = $state(fluxApiManager.getPreferredProvider());
+
+  // Sync provider state with settings
+  $effect(() => {
+    preferredProvider = fluxApiManager.getPreferredProvider();
+  });
   /** @type {boolean} */
   let imageAppendMode = $state(false);
 
@@ -385,8 +396,8 @@
       if (finalReferenceImage) {
         let imageData = finalReferenceImage;
 
-        if (finalReferenceImage.startsWith("blob:")) {
-          // Convert blob URL to data URI
+        // Convert any URL (blob: or http:) to base64 data URI
+        if (!finalReferenceImage.startsWith("data:")) {
           try {
             const response = await fetch(finalReferenceImage);
             const blob = await response.blob();
@@ -405,7 +416,7 @@
             imageData = dataUri;
           } catch (err) {
             error = "Failed to convert image for API";
-            console.error("Blob conversion error:", err);
+            console.error("Image conversion error:", err);
             return;
           }
         }
@@ -414,8 +425,10 @@
         options.image_url = imageData;
       }
 
-      const imageUrl = await falApi.generateFluxImage(model, options);
-      if (imageUrl) {
+      const result = await fluxApiManager.generateImage(options, model);
+      if (result && result.images && result.images.length > 0) {
+        // Use the first generated image
+        const imageUrl = result.images[0].url;
         generatedImage = imageUrl;
         
         // Prepare generation parameters for storage
@@ -431,7 +444,8 @@
           raw,
           guidanceScale: options.guidance_scale,
           numInferenceSteps: options.num_inference_steps,
-          hasReferenceImage: !!options.image_url // Just store boolean flag instead of the data
+          hasReferenceImage: !!options.image_url, // Just store boolean flag instead of the data
+          provider: result.provider // Store which provider was used
         };
         
         await imageManager.saveImage(imageUrl, combinedPrompt, generationParams);
@@ -861,6 +875,25 @@
         </select>
         <p class="text-xs text-gray-600 mt-1">
           {modelOptions.find((m) => m.value === model)?.description || ""}
+        </p>
+      </div>
+
+      <div>
+        <label for="provider-select" class="block mb-1 text-base font-bold">Provider:</label>
+        <select id="provider-select" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={preferredProvider} onchange={() => {
+          settingsManager.setSetting('preferredFluxProvider', preferredProvider);
+        }}>
+          {#each fluxApiManager.getAvailableProviders() as provider}
+            <option value={provider.id} disabled={!provider.available}>
+              {provider.name} {provider.available ? '✅' : '❌'}
+            </option>
+          {/each}
+        </select>
+        <p class="text-xs text-gray-600 mt-1">
+          Current: {preferredProvider === 'fal' ? 'FAL.AI' : 'BlackForest Labs'}
+          {#if fluxApiManager.getProviderStatus().fallbackAvailable}
+            (with fallback)
+          {/if}
         </p>
       </div>
 

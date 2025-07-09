@@ -6,8 +6,11 @@
   // Local state for form handling
   let localApiKey = $state('');
   let localGeminiApiKey = $state('');
+  let localBlackForestApiKey = $state('');
+  let preferredFluxProvider = $state('fal'); // 'fal' or 'blackforest'
   let showApiKey = $state(false);
   let showGeminiApiKey = $state(false);
+  let showBlackForestApiKey = $state(false);
   let hasChanges = $state(false);
   let saveStatus = $state(''); // 'saving', 'saved', 'error'
   
@@ -20,6 +23,8 @@
     if (settingsManager.isLoaded) {
       localApiKey = settingsManager.getSetting('falApiKey') || '';
       localGeminiApiKey = settingsManager.getSetting('geminiApiKey') || '';
+      localBlackForestApiKey = settingsManager.getSetting('blackforestApiKey') || '';
+      preferredFluxProvider = settingsManager.getSetting('preferredFluxProvider') || 'fal';
     }
   });
 
@@ -27,7 +32,12 @@
   $effect(() => {
     const currentApiKey = settingsManager.getSetting('falApiKey') || '';
     const currentGeminiApiKey = settingsManager.getSetting('geminiApiKey') || '';
-    hasChanges = localApiKey !== currentApiKey || localGeminiApiKey !== currentGeminiApiKey;
+    const currentBlackForestApiKey = settingsManager.getSetting('blackforestApiKey') || '';
+    const currentFluxProvider = settingsManager.getSetting('preferredFluxProvider') || 'fal';
+    hasChanges = localApiKey !== currentApiKey || 
+                 localGeminiApiKey !== currentGeminiApiKey ||
+                 localBlackForestApiKey !== currentBlackForestApiKey ||
+                 preferredFluxProvider !== currentFluxProvider;
   });
 
 
@@ -44,9 +54,11 @@
         return;
       }
 
-      // Save API keys
+      // Save API keys and provider preference
       settingsManager.setSetting('falApiKey', localApiKey.trim());
       settingsManager.setSetting('geminiApiKey', localGeminiApiKey.trim());
+      settingsManager.setSetting('blackforestApiKey', localBlackForestApiKey.trim());
+      settingsManager.setSetting('preferredFluxProvider', preferredFluxProvider);
       
       saveStatus = 'saved';
       hasChanges = false;
@@ -68,6 +80,8 @@
   function resetSettings() {
     localApiKey = '';
     localGeminiApiKey = '';
+    localBlackForestApiKey = '';
+    preferredFluxProvider = 'fal';
     settingsManager.resetSettings();
     hasChanges = false;
     saveStatus = '';
@@ -80,6 +94,8 @@
     if (confirm('Are you sure you want to clear all settings? This will remove your API keys and reset all preferences.')) {
       localApiKey = '';
       localGeminiApiKey = '';
+      localBlackForestApiKey = '';
+      preferredFluxProvider = 'fal';
       settingsManager.clearSettings();
       hasChanges = false;
       saveStatus = '';
@@ -98,6 +114,13 @@
    */
   function toggleGeminiApiKeyVisibility() {
     showGeminiApiKey = !showGeminiApiKey;
+  }
+
+  /**
+   * Toggle BlackForest API key visibility
+   */
+  function toggleBlackForestApiKeyVisibility() {
+    showBlackForestApiKey = !showBlackForestApiKey;
   }
 
   /**
@@ -241,6 +264,82 @@
             ⚠️ No Gemini API key configured - random prompt generation will be disabled
           </div>
         {/if}
+      </div>
+
+      <div class="bg-gray-200 border border-gray-500 p-3 mb-4">
+        <div class="mb-3">
+          <label for="blackforest-api-key" class="block text-sm font-bold text-black mb-2">
+            BlackForest Labs API Key (Alternative to FAL):
+          </label>
+          <div class="flex gap-2 items-center">
+            <input
+              id="blackforest-api-key"
+              type={showBlackForestApiKey ? 'text' : 'password'}
+              class="flex-1 border border-gray-500 p-2 text-sm bg-white text-black font-mono"
+              bind:value={localBlackForestApiKey}
+              placeholder="Enter your BlackForest Labs API key..."
+              autocomplete="off"
+            />
+            <button
+              class="px-3 py-2 border border-gray-400 bg-gray-300 text-black text-sm font-bold cursor-pointer btn-outset hover:bg-gray-400"
+              onclick={toggleBlackForestApiKeyVisibility}
+              title={showBlackForestApiKey ? 'Hide API key' : 'Show API key'}
+            >
+              {showBlackForestApiKey ? '🙈' : '👁️'}
+            </button>
+          </div>
+        </div>
+
+        <div class="text-xs text-gray-600 mb-2">
+          <p><strong>🔒 Security Note:</strong> Your API key is stored locally in your browser only.</p>
+          <p><strong>📖 Get API Key:</strong> Visit <a href="https://docs.bfl.ml/" target="_blank" class="text-blue-600 underline">BlackForest Labs</a> to create an API key.</p>
+        </div>
+
+        {#if localBlackForestApiKey.trim()}
+          <div class="text-xs text-green-600">
+            ✅ BlackForest API key is configured
+          </div>
+        {:else}
+          <div class="text-xs text-orange-600">
+            ⚠️ No BlackForest API key configured - BlackForest provider will be unavailable
+          </div>
+        {/if}
+      </div>
+
+      <!-- Flux Provider Selection -->
+      <div class="bg-blue-50 border border-blue-300 p-3 mb-4">
+        <div class="mb-3">
+          <label class="block text-sm font-bold text-black mb-2">
+            Preferred Flux Provider:
+          </label>
+          <div class="flex gap-4">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="radio"
+                name="fluxProvider"
+                value="fal"
+                bind:group={preferredFluxProvider}
+                class="mr-2"
+              />
+              <span class="text-sm">FAL.AI {localApiKey.trim() ? '✅' : '❌'}</span>
+            </label>
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="radio"
+                name="fluxProvider"
+                value="blackforest"
+                bind:group={preferredFluxProvider}
+                class="mr-2"
+              />
+              <span class="text-sm">BlackForest Labs {localBlackForestApiKey.trim() ? '✅' : '❌'}</span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="text-xs text-gray-600">
+          <p><strong>💡 Tip:</strong> Having both providers configured allows automatic fallback if one is unavailable.</p>
+          <p><strong>Current:</strong> Using <strong>{preferredFluxProvider === 'fal' ? 'FAL.AI' : 'BlackForest Labs'}</strong> as primary provider</p>
+        </div>
       </div>
     </div>
 

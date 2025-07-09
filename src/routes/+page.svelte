@@ -17,6 +17,7 @@
   import ChatController from "$lib/windows/chat/ChatController.svelte.js";
   import StaticFileBrowserController from "$lib/windows/static-files/StaticFileBrowserController.svelte.js";
   import ImageAnalyzerController from "$lib/windows/image-analyzer/ImageAnalyzerController.svelte.js";
+  import PromptGeneratorController from "$lib/windows/prompt-generator/PromptGeneratorController.svelte.js";
   // Initialize window manager and theme manager on page load
   onMount(() => {
     windowManager.loadWindowState();
@@ -91,6 +92,10 @@
     <button class="desktop-icon" on:click={ImageAnalyzerController.openImageAnalyzerWindow}>
       <div class="icon">🔍</div>
       <div class="label">Image Analyzer</div>
+    </button>
+    <button class="desktop-icon" on:click={PromptGeneratorController.openPromptGeneratorWindow}>
+      <div class="icon">✨</div>
+      <div class="label">Prompt Generator</div>
     </button>
   </div>
 

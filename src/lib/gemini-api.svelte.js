@@ -1,6 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { settingsManager } from "$lib/settings-manager.svelte.js";
 
+const models = {
+  geminiFlash25: "gemini-2.5-flash",
+  geminiFlash1: "gemini-1.5-flash"
+}
+
 /**
  * @typedef {Object} PromptGenerationOptions
  * @property {string} scenePremise - The general scene type/premise
@@ -103,7 +108,7 @@ function createGeminiApi() {
     error = '';
 
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = genAI.getGenerativeModel({ model: models.geminiFlash25 });
       
       // Convert image to base64
       const { data, mimeType } = await imageToBase64(image);
@@ -168,7 +173,7 @@ Respond with only a concise description (30-100 words) that could be used direct
     error = "";
 
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      const model = genAI.getGenerativeModel({ model: models.geminiFlash25 });
 
       // Build the system prompt based on style
       const styleInstructions = {

@@ -68,6 +68,7 @@
  * @property {number} [guidanceScale] - Guidance scale value
  * @property {number} [numInferenceSteps] - Number of inference steps
  * @property {boolean} [hasReferenceImage] - Whether a reference image was used (boolean flag only)
+ * @property {string} [provider] - API provider used ('fal' or 'blackforest')
  */
 
 /**
@@ -98,6 +99,22 @@
  * @property {number} createdAt - When the image was added to the collection
  * @property {number} updatedAt - When the image was last updated
  * @property {string} [notes] - Optional user notes
+ */
+
+/**
+ * @typedef {Object} SavedPrompt
+ * @property {string} id - Unique prompt ID
+ * @property {string} prompt - The generated prompt text
+ * @property {string} scenePremise - Original scene premise used to generate this prompt
+ * @property {'detailed' | 'artistic' | 'realistic' | 'cinematic'} style - Style used for generation
+ * @property {string[]} [tags] - Optional tags for categorization
+ * @property {number} rating - User rating (1-5 stars)
+ * @property {boolean} isFavorite - Whether this prompt is marked as favorite
+ * @property {number} createdAt - When the prompt was generated
+ * @property {number} savedAt - When the prompt was saved
+ * @property {string} [notes] - Optional user notes
+ * @property {number} [usageCount] - How many times this prompt has been used
+ * @property {number} [lastUsed] - Timestamp of last usage
  */
 
 /** @typedef {"fal-ai/flux-pro/v1.1-ultra" | "fal-ai/flux-pro/kontext" | "fal-ai/flux-pro/kontext/text-to-image" | "fal-ai/bytedance/seedance/v1/pro/text-to-video" | "fal-ai/bytedance/seedance/v1/pro/image-to-video" | "fal-ai/clarity-upscaler" | "fal-ai/esrgan" | "fal-ai/creative-upscaler" | "fal-ai/aura-sr" | "fal-ai/fooocus/upscale-or-vary" | "fal-ai/video-upscaler" | "fal-ai/topaz/upscale/video"} Model */

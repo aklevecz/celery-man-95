@@ -7,6 +7,9 @@ const STORAGE_KEY = 'celery-man-windows-settings';
 
 const DEFAULT_SETTINGS = {
   falApiKey: '',
+  geminiApiKey: '',
+  blackforestApiKey: '',
+  preferredFluxProvider: 'fal',
   theme: 'windows95',
   autoSave: true,
   debugMode: false
