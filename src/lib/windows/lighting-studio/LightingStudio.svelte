@@ -494,7 +494,7 @@
       <div class="bg-gray-200 border border-gray-500 p-4">
         <h3 class="text-lg font-bold mb-3">Subject Analysis</h3>
         
-        {#if subjectDescription}
+        <!-- {#if subjectDescription} -->
           <div class="mb-3">
             <label for="subject-description" class="block text-sm font-bold mb-1">Subject Description:</label>
             <textarea
@@ -505,11 +505,11 @@
             ></textarea>
             <p class="text-xs text-gray-600 mt-1">💡 You can edit this description to refine how the subject will be lit</p>
           </div>
-        {:else}
+        <!-- {:else}
           <div class="bg-gray-100 border border-gray-400 p-3 mb-3">
             <p class="text-sm text-gray-500 italic">Upload and analyze an image to see editable subject description</p>
           </div>
-        {/if}
+        {/if} -->
 
         <button
           class="w-full px-4 py-2 border border-gray-400 bg-gray-300 text-black text-sm font-bold cursor-pointer btn-outset hover:bg-gray-400 disabled:bg-gray-400 disabled:text-gray-500 disabled:cursor-not-allowed"

@@ -1,3 +1,4 @@
+import { dev } from "$app/environment";
 import imageStorage from "$lib/image-storage.js";
 
 function createImageManager() {
@@ -23,7 +24,7 @@ function createImageManager() {
   let urlAccessOrder = $state([]);
 
   const MAX_CACHED_URLS = 50;
-  
+
   /** @type {number | null} */
   let cleanupTimer = null;
 
@@ -36,6 +37,40 @@ function createImageManager() {
       error = `Failed to load saved images: ${err.message}`;
     } finally {
       isLoading = false;
+    }
+  }
+
+  /**
+   * Auto-save image to filesystem (local development only)
+   * @param {string} imageUrl - The URL of the image to save
+   * @param {string} prompt - The prompt used to generate the image
+   * @param {GenerationParams} [generationParams] - All generation parameters used
+   */
+  async function autoSaveToFilesystem(imageUrl, prompt, generationParams = null) {
+    try {
+      const response = await fetch("/api/auto-save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          imageUrl,
+          prompt,
+          metadata: generationParams || {},
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log("📁 Auto-saved:", result.filename);
+      } else {
+        // Don't treat auto-save failures as errors - just log them
+        console.log("Auto-save skipped:", result.message);
+      }
+    } catch (error) {
+      // Silently fail auto-save - don't impact user experience
+      console.log("Auto-save failed:", error.message);
     }
   }
 
@@ -53,6 +88,12 @@ function createImageManager() {
       await imageStorage.saveImage(imageUrl, prompt, generationParams);
       await loadSavedImages();
       await generateAllImageUrls();
+
+      // Auto-save to filesystem (local development only)
+      if (dev) {
+        autoSaveToFilesystem(imageUrl, prompt, generationParams);
+      }
+
       error = "";
     } catch (/** @type {any} */ err) {
       error = `Failed to save image: ${err.message}`;
@@ -116,18 +157,18 @@ function createImageManager() {
    */
   function evictLRUUrls() {
     console.log("evictLRUUrls", urlAccessOrder.length, MAX_CACHED_URLS, "ref counts:", Object.keys(urlRefCounts).length);
-    
+
     if (urlAccessOrder.length <= MAX_CACHED_URLS) return;
-    
+
     // Find unreferenced URLs to evict
     const toEvict = [];
-    for (let i = 0; i < urlAccessOrder.length && toEvict.length < (urlAccessOrder.length - MAX_CACHED_URLS); i++) {
+    for (let i = 0; i < urlAccessOrder.length && toEvict.length < urlAccessOrder.length - MAX_CACHED_URLS; i++) {
       const imageId = urlAccessOrder[i];
       if (urlRefCounts[imageId] === 0) {
         toEvict.push(imageId);
       }
     }
-    
+
     // Evict the unreferenced URLs
     for (const imageId of toEvict) {
       const url = imageUrls[imageId];
@@ -136,7 +177,7 @@ function createImageManager() {
         URL.revokeObjectURL(url);
         delete imageUrls[imageId];
         delete urlRefCounts[imageId];
-        
+
         const index = urlAccessOrder.indexOf(imageId);
         if (index > -1) {
           urlAccessOrder.splice(index, 1);
@@ -159,31 +200,31 @@ function createImageManager() {
         updateAccessOrder(imageId);
         return imageUrls[imageId];
       }
-      
+
       // Create new Object URL from blob
       const url = await imageStorage.getImageObjectURL(imageId);
       if (url) {
         imageUrls[imageId] = url;
         urlRefCounts[imageId] = 1;
         updateAccessOrder(imageId);
-        
+
         // Evict old URLs if cache is full
         evictLRUUrls();
-        
+
         return url;
       }
-      
+
       return null;
     } catch (/** @type {any} */ err) {
       console.warn(`Failed to get image URL for ${imageId} (attempt ${retryCount + 1}):`, err);
-      
+
       // Retry with exponential backoff (max 2 retries)
       if (retryCount < 2) {
         const delay = Math.pow(2, retryCount) * 500; // 500ms, 1s, 2s
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
         return getImageUrl(imageId, retryCount + 1);
       }
-      
+
       error = `Failed to get image URL after ${retryCount + 1} attempts: ${err.message}`;
       return null;
     }
@@ -195,10 +236,10 @@ function createImageManager() {
    */
   function releaseImageUrl(imageId) {
     if (!urlRefCounts[imageId]) return;
-    
+
     urlRefCounts[imageId]--;
     console.log("Released reference for", imageId, "new count:", urlRefCounts[imageId]);
-    
+
     // Immediately clean up when no more references
     if (urlRefCounts[imageId] <= 0) {
       const url = imageUrls[imageId];
@@ -207,7 +248,7 @@ function createImageManager() {
         URL.revokeObjectURL(url);
         delete imageUrls[imageId];
         delete urlRefCounts[imageId];
-        
+
         const index = urlAccessOrder.indexOf(imageId);
         if (index > -1) {
           urlAccessOrder.splice(index, 1);
@@ -232,7 +273,7 @@ function createImageManager() {
       clearInterval(cleanupTimer);
       cleanupTimer = null;
     }
-    
+
     for (const url of Object.values(imageUrls)) {
       URL.revokeObjectURL(url);
     }
@@ -247,13 +288,13 @@ function createImageManager() {
   function forceCleanupUnreferenced() {
     console.log("Force cleanup of unreferenced URLs");
     const toCleanup = [];
-    
+
     for (const [imageId, refCount] of Object.entries(urlRefCounts)) {
       if (refCount === 0) {
         toCleanup.push(imageId);
       }
     }
-    
+
     for (const imageId of toCleanup) {
       const url = imageUrls[imageId];
       if (url) {
@@ -261,7 +302,7 @@ function createImageManager() {
         URL.revokeObjectURL(url);
         delete imageUrls[imageId];
         delete urlRefCounts[imageId];
-        
+
         const index = urlAccessOrder.indexOf(imageId);
         if (index > -1) {
           urlAccessOrder.splice(index, 1);
@@ -281,7 +322,7 @@ function createImageManager() {
         URL.revokeObjectURL(url);
         delete imageUrls[imageId];
         delete urlRefCounts[imageId];
-        
+
         // Remove from access order
         const index = urlAccessOrder.indexOf(imageId);
         if (index > -1) {
@@ -313,12 +354,13 @@ function createImageManager() {
    */
   function generateBetterFilename(prompt, timestamp) {
     // Take first 40 chars, remove special chars, replace spaces with underscores
-    const sanitized = prompt.substring(0, 40)
-      .replace(/[^a-zA-Z0-9\s]/g, '')
-      .replace(/\s+/g, '_')
+    const sanitized = prompt
+      .substring(0, 40)
+      .replace(/[^a-zA-Z0-9\s]/g, "")
+      .replace(/\s+/g, "_")
       .toLowerCase()
-      .replace(/^_+|_+$/g, ''); // Remove leading/trailing underscores
-    
+      .replace(/^_+|_+$/g, ""); // Remove leading/trailing underscores
+
     return sanitized ? `${sanitized}_${timestamp}.png` : `image_${timestamp}.png`;
   }
 
@@ -335,10 +377,10 @@ function createImageManager() {
         timestamp: savedImage.timestamp,
         imageId: savedImage.id,
         originalUrl: savedImage.url,
-        filename: savedImage.filename
-      }
+        filename: savedImage.filename,
+      },
     };
-    
+
     return JSON.stringify(metadata, null, 2);
   }
 
@@ -348,11 +390,11 @@ function createImageManager() {
    * @param {string} filename - Base filename (without extension)
    */
   function downloadMetadata(content, filename) {
-    const blob = new Blob([content], { type: 'application/json' });
+    const blob = new Blob([content], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = filename.replace(/\.(png|jpg|jpeg)$/i, '.json');
+    link.download = filename.replace(/\.(png|jpg|jpeg)$/i, ".json");
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -362,31 +404,59 @@ function createImageManager() {
    * @param {string} imageId - The ID of the image to download
    * @param {'image' | 'metadata' | 'both'} downloadType - What to download
    */
-  async function downloadWithMetadata(imageId, downloadType = 'image') {
+  async function downloadWithMetadata(imageId, downloadType = "image") {
     try {
       // Find the saved image data
-      const savedImage = savedImages.find(img => img.id === imageId);
+      const savedImage = savedImages.find((img) => img.id === imageId);
       if (!savedImage) {
-        throw new Error('Image not found');
+        throw new Error("Image not found");
       }
 
       // Generate better filename
       const filename = generateBetterFilename(savedImage.prompt, savedImage.timestamp);
-      
-      if (downloadType === 'image' || downloadType === 'both') {
+
+      if (downloadType === "image" || downloadType === "both") {
         // Download the image
         await imageStorage.downloadSavedImage(imageId, filename);
       }
-      
-      if (downloadType === 'metadata' || downloadType === 'both') {
+
+      if (downloadType === "metadata" || downloadType === "both") {
         // Download metadata JSON
         const metadataContent = createMetadataJson(savedImage);
         downloadMetadata(metadataContent, filename);
       }
-      
+
       error = "";
     } catch (/** @type {any} */ err) {
       error = `Failed to download: ${err.message}`;
+    }
+  }
+
+  /**
+   * Batch download multiple images
+   * @param {string[]} imageIds - Array of image IDs to download
+   * @param {'image' | 'metadata' | 'both'} downloadType - What to download
+   */
+  async function batchDownload(imageIds, downloadType = "image") {
+    if (!imageIds.length) return;
+
+    try {
+      console.log(`📥 Starting batch download of ${imageIds.length} images...`);
+      
+      for (let i = 0; i < imageIds.length; i++) {
+        const imageId = imageIds[i];
+        console.log(`📥 Downloading ${i + 1}/${imageIds.length}: ${imageId}`);
+        
+        await downloadWithMetadata(imageId, downloadType);
+        
+        // Small delay to prevent overwhelming browser
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      console.log('✅ Batch download complete!');
+      error = "";
+    } catch (/** @type {any} */ err) {
+      error = `Failed to batch download: ${err.message}`;
     }
   }
 
@@ -405,12 +475,12 @@ function createImageManager() {
    */
   async function previewImage(imageUrl, options = {}) {
     const { imageId, title, prompt } = options;
-    const { default: ImagePreviewController } = await import('$lib/windows/image-preview/ImagePreviewController.svelte.js');
+    const { default: ImagePreviewController } = await import("$lib/windows/image-preview/ImagePreviewController.svelte.js");
     ImagePreviewController.openImagePreviewWindow({
       imageUrl,
       imageId,
       title,
-      prompt
+      prompt,
     });
   }
 
@@ -432,6 +502,7 @@ function createImageManager() {
     },
     saveImage,
     deleteImage,
+    batchDownload,
     downloadImage,
     getImageUrl,
     generateAllImageUrls,

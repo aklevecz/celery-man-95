@@ -1,0 +1,5 @@
+# Auto-saved images directory
+
+This directory is used to automatically save generated images when running in local development mode.
+
+Files are saved with timestamps and metadata for easy organization.

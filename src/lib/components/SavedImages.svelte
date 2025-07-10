@@ -5,6 +5,14 @@
   import UpscalerController from "$lib/windows/upscaler/UpscalerController.svelte.js";
   let { savedImages, error = $bindable(), generatedImage = $bindable(), onDescribeImage = $bindable() } = $props();
 
+  // Batch selection state
+  /** @type {Set<string>} */
+  let selectedImages = $state(new Set());
+  /** @type {boolean} */
+  let isBatchMode = $state(false);
+  /** @type {boolean} */
+  let isBatchDownloading = $state(false);
+
   /** @type {IntersectionObserver | null} */
   let intersectionObserver = null;
 
@@ -137,21 +145,149 @@
       onDescribeImage(objectURL);
     }
   }
+
+  /**
+   * Toggle batch mode
+   */
+  function toggleBatchMode() {
+    isBatchMode = !isBatchMode;
+    if (!isBatchMode) {
+      selectedImages.clear();
+    }
+  }
+
+  /**
+   * Toggle image selection
+   * @param {string} imageId - The ID of the image
+   */
+  function toggleImageSelection(imageId) {
+    if (selectedImages.has(imageId)) {
+      selectedImages.delete(imageId);
+    } else {
+      selectedImages.add(imageId);
+    }
+    selectedImages = selectedImages; // Trigger reactivity
+  }
+
+  /**
+   * Select all images
+   */
+  function selectAllImages() {
+    selectedImages = new Set(savedImages.map(img => img.id));
+  }
+
+  /**
+   * Clear all selections
+   */
+  function clearAllSelections() {
+    selectedImages.clear();
+    selectedImages = selectedImages; // Trigger reactivity
+  }
+
+  /**
+   * Batch download selected images
+   * @param {'image' | 'metadata' | 'both'} downloadType - What to download
+   */
+  async function batchDownloadSelected(downloadType) {
+    if (selectedImages.size === 0) return;
+    
+    isBatchDownloading = true;
+    try {
+      await imageManager.batchDownload(Array.from(selectedImages), downloadType);
+      selectedImages.clear();
+      selectedImages = selectedImages; // Trigger reactivity
+    } catch (err) {
+      console.error('Batch download failed:', err);
+    } finally {
+      isBatchDownloading = false;
+    }
+  }
 </script>
 
 <div class="p-1 border-t border-gray-500 h-full">
-  <h3 class="m-0 mb-2 text-base font-bold text-black">Saved Images ({savedImages.length})</h3>
+  <div class="flex justify-between items-center mb-2">
+    <h3 class="m-0 text-base font-bold text-black">Saved Images ({savedImages.length})</h3>
+    
+    <!-- Batch mode toggle -->
+    <button
+      class="px-2 py-1 text-xs border border-gray-400 bg-gray-300 text-black cursor-pointer btn-outset hover:bg-gray-400 {isBatchMode ? 'bg-blue-300' : ''}"
+      onclick={toggleBatchMode}
+      title="Toggle batch selection mode"
+    >
+      {isBatchMode ? '✅ Batch' : '📦 Batch'}
+    </button>
+  </div>
+
+  <!-- Batch controls (shown when in batch mode) -->
+  {#if isBatchMode}
+    <div class="mb-2 p-2 bg-gray-200 border border-gray-400">
+      <div class="flex flex-wrap gap-1 items-center text-xs">
+        <span class="font-bold">Selected: {selectedImages.size}</span>
+        
+        <button
+          class="px-1 py-0.5 border border-gray-400 bg-gray-300 text-black cursor-pointer btn-outset hover:bg-gray-400"
+          onclick={selectAllImages}
+          title="Select all images"
+        >
+          All
+        </button>
+        
+        <button
+          class="px-1 py-0.5 border border-gray-400 bg-gray-300 text-black cursor-pointer btn-outset hover:bg-gray-400"
+          onclick={clearAllSelections}
+          title="Clear selection"
+        >
+          None
+        </button>
+        
+        {#if selectedImages.size > 0}
+          <span class="text-gray-600">|</span>
+          
+          <button
+            class="px-1 py-0.5 border border-gray-400 bg-green-300 text-black cursor-pointer btn-outset hover:bg-green-400 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            onclick={() => batchDownloadSelected('image')}
+            disabled={isBatchDownloading}
+            title="Download selected images"
+          >
+            {isBatchDownloading ? '⏳' : '📥'} Images
+          </button>
+          
+          <button
+            class="px-1 py-0.5 border border-gray-400 bg-green-300 text-black cursor-pointer btn-outset hover:bg-green-400 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            onclick={() => batchDownloadSelected('both')}
+            disabled={isBatchDownloading}
+            title="Download selected images + metadata"
+          >
+            {isBatchDownloading ? '⏳' : '📦'} All
+          </button>
+        {/if}
+      </div>
+    </div>
+  {/if}
+  
   <div class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3 overflow-y-auto h-full">
     {#each savedImages as savedImage (savedImage.id)}
-      <div class="border border-inset border-gray-500 bg-gray-300 p-2 flex flex-col gap-1" data-image-id={savedImage.id}>
+      <div class="border border-inset border-gray-500 bg-gray-300 p-2 flex flex-col gap-1 relative" data-image-id={savedImage.id}>
+        <!-- Batch mode checkbox overlay -->
+        {#if isBatchMode}
+          <div 
+            class="absolute top-1 left-1 w-6 h-6 z-10 cursor-pointer"
+            onclick={() => toggleImageSelection(savedImage.id)}
+          >
+            <div class="w-6 h-6 border-2 border-white bg-black bg-opacity-50 flex items-center justify-center text-white text-sm font-bold">
+              {selectedImages.has(savedImage.id) ? '✓' : ''}
+            </div>
+          </div>
+        {/if}
+        
         <button
-          class="w-full aspect-square bg-gray-200 border border-inset border-gray-500 flex items-center justify-center cursor-pointer text-2xl p-0 font-sans hover:bg-gray-300"
-          onclick={() => loadSavedImagePreview(savedImage.id)}
-          ondblclick={() => openImagePreview(savedImage.id, savedImage)}
+          class="w-full aspect-square bg-gray-200 border border-inset border-gray-500 flex items-center justify-center cursor-pointer text-2xl p-0 font-sans hover:bg-gray-300 {selectedImages.has(savedImage.id) ? 'ring-2 ring-blue-500' : ''}"
+          onclick={() => isBatchMode ? toggleImageSelection(savedImage.id) : loadSavedImagePreview(savedImage.id)}
+          ondblclick={() => !isBatchMode && openImagePreview(savedImage.id, savedImage)}
           aria-label="Click to load, double-click to preview full size: {savedImage.prompt.substring(0, 50)}"
-          title="Click: Load to main view | Double-click: Open full size preview | Drag: Use as reference image"
-          draggable="true"
-          ondragstart={(event) => handleDragStart(event, savedImage.id)}
+          title="{isBatchMode ? 'Click to select/deselect' : 'Click: Load to main view | Double-click: Open full size preview | Drag: Use as reference image'}"
+          draggable={!isBatchMode ? "true" : "false"}
+          ondragstart={(event) => !isBatchMode && handleDragStart(event, savedImage.id)}
         >
           <div>
             <img src={imageManager.imageUrls[savedImage.id] || "favicon.svg"} alt="Saved generation thumbnail" class="w-full h-full object-cover" draggable="false" />
