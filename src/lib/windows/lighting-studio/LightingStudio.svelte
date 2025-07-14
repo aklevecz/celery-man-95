@@ -11,9 +11,10 @@
   /** @type {boolean} */
   let isDragOver = $state(false);
 
+  const DEFAULT_SUBJECT_DESCRIPTION = 'Change the lighting to the following: ';
   // Analysis state
   /** @type {string} */
-  let subjectDescription = $state('');
+  let subjectDescription = $state(DEFAULT_SUBJECT_DESCRIPTION);
   /** @type {boolean} */
   let isAnalyzing = $state(false);
   /** @type {string} */
@@ -24,6 +25,19 @@
   let isGenerating = $state(false);
   /** @type {string} */
   let generationError = $state('');
+  
+  // Aspect ratio options
+  /** @type {'21:9' | '16:9' | '4:3' | '1:1' | '3:4' | '9:16'} */
+  let selectedAspectRatio = $state('16:9');
+  
+  const aspectRatioOptions = [
+    { value: '21:9', label: '21:9 (Ultrawide)' },
+    { value: '16:9', label: '16:9 (Widescreen)' },
+    { value: '4:3', label: '4:3 (Standard)' },
+    { value: '1:1', label: '1:1 (Square)' },
+    { value: '3:4', label: '3:4 (Portrait)' },
+    { value: '9:16', label: '9:16 (Vertical)' }
+  ];
 
   // Lighting scenarios
   const lightingScenarios = [
@@ -189,7 +203,7 @@
       imagePreviewUrl = URL.createObjectURL(file);
 
       // Reset analysis and generation state
-      subjectDescription = '';
+      // subjectDescription = '';
       analysisError = '';
       resetScenarios();
 
@@ -343,7 +357,7 @@
       /** @type {any} */
       const options = {
         prompt: fullPrompt,
-        aspect_ratio: '16:9',
+        aspect_ratio: selectedAspectRatio,
         output_format: 'jpeg',
         num_images: 1,
         enable_safety_checker: false,
@@ -374,7 +388,7 @@
         // Save to gallery
         await imageManager.saveImage(imageUrl, fullPrompt, {
           model: 'fal-ai/flux-pro/kontext',
-          aspectRatio: '16:9',
+          aspectRatio: selectedAspectRatio,
           outputFormat: 'jpeg',
           numImages: 1,
           enableSafetyChecker: false,
@@ -510,6 +524,20 @@
             <p class="text-sm text-gray-500 italic">Upload and analyze an image to see editable subject description</p>
           </div>
         {/if} -->
+
+        <!-- Aspect Ratio Selection -->
+        <div class="mb-3">
+          <label for="aspect-ratio" class="block text-sm font-bold mb-1">Aspect Ratio:</label>
+          <select
+            id="aspect-ratio"
+            class="w-full border border-gray-400 p-2 text-sm bg-white text-black"
+            bind:value={selectedAspectRatio}
+          >
+            {#each aspectRatioOptions as option}
+              <option value={option.value}>{option.label}</option>
+            {/each}
+          </select>
+        </div>
 
         <button
           class="w-full px-4 py-2 border border-gray-400 bg-gray-300 text-black text-sm font-bold cursor-pointer btn-outset hover:bg-gray-400 disabled:bg-gray-400 disabled:text-gray-500 disabled:cursor-not-allowed"
