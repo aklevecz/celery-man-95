@@ -167,7 +167,7 @@
       const imageDataUrl = await new Promise((resolve, reject) => {
         reader.onload = () => resolve(/** @type {string} */ (reader.result));
         reader.onerror = reject;
-        reader.readAsDataURL(draggedFile);
+        reader.readAsDataURL(draggedFile || new Blob());
       });
       
       // Perform analysis
@@ -180,7 +180,7 @@
       const imageId = `analyzed_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const tags = newImageTags.split(',').map(tag => tag.trim()).filter(tag => tag);
       
-      /** @type {import('$lib/types.js').AnalyzedImage} */
+      /** @type AnalyzedImage} */
       const analyzedImage = {
         id: imageId,
         name: newImageName || 'Untitled Image',
@@ -224,7 +224,7 @@
 
   /**
    * Add new analysis to existing image
-   * @param {import('$lib/types.js').AnalyzedImage} image
+   * @param AnalyzedImage} image
    */
   async function addAnalysisToExistingImage(image) {
     if (!image.imageUrl) return;
@@ -297,7 +297,7 @@
 
   /**
    * Select image for viewing
-   * @param {import('$lib/types.js').AnalyzedImage} image
+   * @param AnalyzedImage} image
    */
   function selectImage(image) {
     selectedImage = image;
@@ -324,9 +324,9 @@
 
   /**
    * Get analysis by type
-   * @param {import('$lib/types.js').AnalyzedImage} image
+   * @param AnalyzedImage} image
    * @param {string} type
-   * @returns {import('$lib/types.js').ImageAnalysis | undefined}
+   * @returns ImageAnalysis | undefined}
    */
   function getAnalysis(image, type) {
     return image.analyses.find(a => a.type === type);

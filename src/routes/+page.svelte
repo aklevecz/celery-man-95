@@ -42,10 +42,10 @@
 <div class="desktop">
   <!-- Desktop Icons -->
   <div class="desktop-icons">
-    <button class="desktop-icon" on:click={createDemoWindow}>
+    <!-- <button class="desktop-icon" on:click={createDemoWindow}>
       <div class="icon">📄</div>
       <div class="label">Demo Window</div>
-    </button>
+    </button> -->
     <button class="desktop-icon" on:click={AboutController.openAboutWindow}>
       <div class="icon">ℹ️</div>
       <div class="label">About</div>
@@ -82,10 +82,10 @@
       <div class="icon">🎬</div>
       <div class="label">Video Upscaler</div>
     </button>
-    <button class="desktop-icon" on:click={ChatController.openChatWindow}>
+    <!-- <button class="desktop-icon" on:click={ChatController.openChatWindow}>
       <div class="icon">💬</div>
       <div class="label">Chat</div>
-    </button>
+    </button> -->
     <button class="desktop-icon" on:click={StaticFileBrowserController.openStaticFileBrowserWindow}>
       <div class="icon">📁</div>
       <div class="label">Static Files</div>
@@ -98,10 +98,10 @@
       <div class="icon">✨</div>
       <div class="label">Prompt Generator</div>
     </button>
-    <button class="desktop-icon" on:click={LightingStudioController.openLightingStudioWindow}>
+    <!-- <button class="desktop-icon" on:click={LightingStudioController.openLightingStudioWindow}>
       <div class="icon">💡</div>
       <div class="label">Lighting Studio</div>
-    </button>
+    </button> -->
   </div>
 
   <!-- Theme Switcher -->
