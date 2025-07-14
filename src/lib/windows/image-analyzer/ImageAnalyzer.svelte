@@ -1,20 +1,19 @@
 <script>
-  import { onMount } from 'svelte';
-  import { geminiApi } from '$lib/gemini-api.svelte.js';
-  import { 
-    getAnalyzedImages, 
-    saveAnalyzedImage, 
-    deleteAnalyzedImage, 
-    addAnalysisToImage,
-    updateAnalyzedImageMetadata,
-    searchAnalyzedImages,
-    getAllTags,
-    exportAnalyzedImageMetadata
+  import {
+      addAnalysisToImage,
+      deleteAnalyzedImage,
+      exportAnalyzedImageMetadata,
+      getAllTags,
+      getAnalyzedImages,
+      saveAnalyzedImage,
+      searchAnalyzedImages
   } from '$lib/analyzed-image-storage.js';
+  import { geminiApi } from '$lib/gemini-api.svelte.js';
+  import { onMount } from 'svelte';
 
-  /** @type {import('$lib/types.js').AnalyzedImage[]} */
+  /** @type {AnalyzedImage[]} */
   let analyzedImages = $state([]);
-  /** @type {import('$lib/types.js').AnalyzedImage | null} */
+  /** @type {AnalyzedImage | null} */
   let selectedImage = $state(null);
   /** @type {string} */
   let searchTerm = $state('');
@@ -376,7 +375,15 @@
         {#each filteredImages as image (image.id)}
           <div 
             class="border-b border-gray-400 p-3 cursor-pointer hover:bg-gray-300 {selectedImage?.id === image.id ? 'bg-blue-200' : ''}"
+            role="button"
+            tabindex="0"
             onclick={() => selectImage(image)}
+            onkeydown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                selectImage(image);
+              }
+            }}
           >
             <div class="flex items-center gap-2">
               <img 
@@ -506,8 +513,9 @@
             </div>
             <div class="flex-1">
               <div class="mb-2">
-                <label class="block text-sm font-bold mb-1">Name:</label>
+                <label class="block text-sm font-bold mb-1" for="image-name">Name:</label>
                 <input
+                  id="image-name"
                   type="text"
                   class="w-full border border-gray-500 p-2 text-sm bg-white text-black"
                   bind:value={newImageName}
@@ -515,8 +523,9 @@
                 />
               </div>
               <div class="mb-2">
-                <label class="block text-sm font-bold mb-1">Tags (comma-separated):</label>
+                <label class="block text-sm font-bold mb-1" for="image-tags">Tags (comma-separated):</label>
                 <input
+                  id="image-tags"
                   type="text"
                   class="w-full border border-gray-500 p-2 text-sm bg-white text-black"
                   bind:value={newImageTags}
@@ -524,8 +533,9 @@
                 />
               </div>
               <div class="mb-2">
-                <label class="block text-sm font-bold mb-1">Notes:</label>
+                <label class="block text-sm font-bold mb-1" for="image-notes">Notes:</label>
                 <textarea
+                  id="image-notes"
                   class="w-full border border-gray-500 p-2 text-sm bg-white text-black"
                   bind:value={newImageNotes}
                   placeholder="Optional notes about this image"
@@ -539,8 +549,9 @@
         <!-- Analysis Controls -->
         <div class="flex-1 overflow-auto p-4">
           <div class="mb-4">
-            <label class="block text-sm font-bold mb-2">Analysis Type:</label>
+            <label class="block text-sm font-bold mb-2" for="analysis-type">Analysis Type:</label>
             <select 
+              id="analysis-type"
               class="w-full border border-gray-500 p-2 text-sm bg-white text-black"
               bind:value={analysisType}
             >

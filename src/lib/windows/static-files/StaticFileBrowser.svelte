@@ -162,15 +162,19 @@
           <div class="border border-gray-500 bg-white p-2 rounded">
             <!-- Image Preview -->
             <div class="aspect-square bg-gray-100 border border-gray-300 rounded mb-2 overflow-hidden">
-              <img
-                src={file.path}
-                alt={file.name}
-                class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                draggable="true"
-                ondragstart={(event) => handleDragStart(event, file.path)}
+              <button
+                class="w-full h-full p-0 border-0 bg-transparent cursor-pointer"
                 onclick={() => copyImageUrl(file.path)}
                 title="Click to copy URL, drag to use as reference"
-              />
+              >
+                <img
+                  src={file.path}
+                  alt={file.name}
+                  class="w-full h-full object-cover hover:opacity-80 transition-opacity"
+                  draggable="true"
+                  ondragstart={(event) => handleDragStart(event, file.path)}
+                />
+              </button>
             </div>
             
             <!-- File Info -->

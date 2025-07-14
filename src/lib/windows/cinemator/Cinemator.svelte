@@ -318,7 +318,7 @@
   <div class="p-4 border-b border-gray-500">
     <!-- Mode Selection -->
     <div class="mb-4">
-      <label class="block mb-2 text-lg font-bold">Generation Mode:</label>
+      <div class="block mb-2 text-lg font-bold">Generation Mode:</div>
       <div class="flex gap-4">
         <label class="flex items-center text-base font-bold">
           <input 
@@ -344,13 +344,21 @@
     <!-- Reference Image Input (only for image-to-video mode) -->
     {#if mode === MODES.IMAGE_TO_VIDEO}
       <div class="mb-4">
-        <label class="block mb-2 text-lg font-bold">Reference Image:</label>
+        <div class="block mb-2 text-lg font-bold">Reference Image:</div>
         <div 
           class="border-2 border-dashed border-gray-400 rounded p-4 text-center cursor-pointer transition-colors {isDragOver ? 'border-blue-500 bg-blue-50' : 'hover:border-gray-600'}"
+          role="button"
+          tabindex="0"
           ondragover={handleDragOver}
           ondragleave={handleDragLeave}
           ondrop={handleDrop}
           onclick={() => document.getElementById('reference-video-input')?.click()}
+          onkeydown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              document.getElementById('reference-video-input')?.click();
+            }
+          }}
         >
           {#if referenceImageUrl}
             <div class="relative">

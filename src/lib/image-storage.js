@@ -53,12 +53,12 @@ async function urlToBlob(imageUrl) {
  * @param {GenerationParams} [generationParams] - All generation parameters used
  * @returns {Promise<string>} - Returns the saved image ID
  */
-async function saveImage(imageUrl, prompt, generationParams = null) {
+async function saveImage(imageUrl, prompt, generationParams = undefined) {
   try {
     await initDB();
 
     // Generate unique ID
-    const id = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const id = `img_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
     const timestamp = Date.now();
     const filename = `fluxor_${timestamp}.png`;
 
@@ -110,7 +110,9 @@ async function saveImage(imageUrl, prompt, generationParams = null) {
       }
     }
 
-    localStorage.setItem(METADATA_KEY, JSON.stringify(savedImages));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(METADATA_KEY, JSON.stringify(savedImages));
+    }
 
     return id;
   } catch (error) {
@@ -125,6 +127,9 @@ async function saveImage(imageUrl, prompt, generationParams = null) {
  */
 function getSavedImagesMetadata() {
   try {
+    if (typeof localStorage === 'undefined') {
+      return [];
+    }
     const saved = localStorage.getItem(METADATA_KEY);
     return saved ? JSON.parse(saved) : [];
   } catch (error) {
@@ -204,7 +209,9 @@ async function deleteSavedImage(imageId) {
     // Remove from localStorage metadata
     const savedImages = getSavedImagesMetadata();
     const updatedImages = savedImages.filter((img) => img.id !== imageId);
-    localStorage.setItem(METADATA_KEY, JSON.stringify(updatedImages));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(METADATA_KEY, JSON.stringify(updatedImages));
+    }
 
     // Remove blob from IndexedDB
     await deleteImageBlob(imageId);
@@ -255,7 +262,9 @@ async function downloadSavedImage(imageId, filename) {
 async function clearAllSavedImages() {
   try {
     // Clear localStorage metadata
-    localStorage.removeItem(METADATA_KEY);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(METADATA_KEY);
+    }
 
     // Clear IndexedDB
     await initDB();

@@ -1,6 +1,7 @@
 <script>
   import { chatManager } from "$lib/chat-manager.svelte.js";
   import VoiceController from "$lib/components/VoiceController.svelte";
+  import { ollamaApi } from "$lib/ollama-api.svelte.js";
   import { onMount } from "svelte";
 
   /** @type {string} */
@@ -11,6 +12,8 @@
   let textareaRef = null;
   /** @type {boolean} */
   let shouldFocusAfterSend = $state(false);
+  /** @type {boolean} */
+  let isOllamaAvailable = $state(true);
 
   // Auto-scroll to bottom when new messages arrive
   function scrollToBottom() {
@@ -105,8 +108,9 @@
     }
   }
 
-  onMount(() => {
+  onMount(async () => {
     scrollToBottom();
+    isOllamaAvailable = await ollamaApi.isAvailable();
   });
 </script>
 
@@ -196,12 +200,12 @@
         <textarea
           bind:this={textareaRef}
           bind:value={messageInput}
-          placeholder="Type your message... (Enter to send, Shift+Enter for new line) or use voice commands"
+          placeholder={isOllamaAvailable ? "Type your message... (Enter to send, Shift+Enter for new line) or use voice commands" : "Ollama not available - please install and start Ollama"}
           class="w-full p-2 border border-gray-400 bg-white text-black resize-none min-h-[40px] max-h-[120px] text-sm"
           rows="1"
           onkeydown={handleKeyDown}
           oninput={autoResizeTextarea}
-          disabled={chatManager.isLoading}
+          disabled={chatManager.isLoading || !isOllamaAvailable}
         ></textarea>
       </div>
       
@@ -215,7 +219,7 @@
       <button
         class="px-4 py-2 border border-gray-400 bg-gray-300 text-black cursor-pointer btn-outset hover:bg-blue-200 disabled:bg-gray-400 disabled:text-gray-500 disabled:cursor-not-allowed"
         onclick={handleSubmit}
-        disabled={chatManager.isLoading || !messageInput.trim()}
+        disabled={chatManager.isLoading || !messageInput.trim() || !isOllamaAvailable}
       >
         {#if chatManager.isLoading}
           <div class="w-4 h-4 border-2 border-gray-400 border-t-blue-600 rounded-full animate-spin"></div>
@@ -225,10 +229,16 @@
       </button>
     </div>
     
-    <!-- Voice Instructions -->
+    <!-- Voice Instructions and Warnings -->
     <div class="mt-2 text-xs text-gray-600">
       💡 Voice commands: Say "computer [command] please" • Example: "computer open fluxor please"
     </div>
+    
+    {#if !isOllamaAvailable}
+      <div class="mt-2 text-xs text-red-600">
+        ⚠️ Ollama not available - Please install and start Ollama to use the AI chat
+      </div>
+    {/if}
   </div>
 
   <!-- Error Display -->

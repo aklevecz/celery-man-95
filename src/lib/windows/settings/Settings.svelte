@@ -309,9 +309,9 @@
       <!-- Flux Provider Selection -->
       <div class="bg-blue-50 border border-blue-300 p-3 mb-4">
         <div class="mb-3">
-          <label class="block text-sm font-bold text-black mb-2">
+          <div class="block text-sm font-bold text-black mb-2">
             Preferred Flux Provider:
-          </label>
+          </div>
           <div class="flex gap-4">
             <label class="flex items-center cursor-pointer">
               <input

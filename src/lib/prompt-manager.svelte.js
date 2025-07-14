@@ -19,6 +19,11 @@ function createPromptManager() {
   function loadPrompts() {
     
     try {
+      if (typeof localStorage === 'undefined') {
+        prompts = [];
+        isLoaded = true;
+        return;
+      }
       const stored = localStorage.getItem(SAVED_PROMPTS_KEY);
       prompts = stored ? JSON.parse(stored) : [];
       isLoaded = true;
@@ -34,7 +39,9 @@ function createPromptManager() {
    */
   function saveToStorage() {
     try {
-      localStorage.setItem(SAVED_PROMPTS_KEY, JSON.stringify(prompts));
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(SAVED_PROMPTS_KEY, JSON.stringify(prompts));
+      }
     } catch (error) {
       console.error('Error saving prompts:', error);
     }

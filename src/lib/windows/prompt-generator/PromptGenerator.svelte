@@ -206,8 +206,9 @@
         <h3 class="text-lg font-bold mb-3">Generate New Prompt</h3>
         
         <div class="mb-3">
-          <label class="block text-sm font-bold mb-1">Scene Premise:</label>
+          <label class="block text-sm font-bold mb-1" for="scene-premise">Scene Premise:</label>
           <textarea
+            id="scene-premise"
             class="w-full border border-gray-500 p-2 text-sm bg-white text-black"
             bind:value={scenePremise}
             placeholder="e.g., A warrior in a mystical forest, A futuristic cityscape, A serene mountain lake"
@@ -216,8 +217,9 @@
         </div>
 
         <div class="mb-3">
-          <label class="block text-sm font-bold mb-1">Style:</label>
+          <label class="block text-sm font-bold mb-1" for="style-select">Style:</label>
           <select 
+            id="style-select"
             class="w-full border border-gray-500 p-2 text-sm bg-white text-black"
             bind:value={promptStyle}
           >

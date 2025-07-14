@@ -272,7 +272,15 @@
         {#if isBatchMode}
           <div 
             class="absolute top-1 left-1 w-6 h-6 z-10 cursor-pointer"
+            role="button"
+            tabindex="0"
             onclick={() => toggleImageSelection(savedImage.id)}
+            onkeydown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleImageSelection(savedImage.id);
+              }
+            }}
           >
             <div class="w-6 h-6 border-2 border-white bg-black bg-opacity-50 flex items-center justify-center text-white text-sm font-bold">
               {selectedImages.has(savedImage.id) ? '✓' : ''}

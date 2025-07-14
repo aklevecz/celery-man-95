@@ -269,10 +269,18 @@
         <!-- Dropzone -->
         <div 
           class="border-2 border-dashed border-gray-400 p-4 text-center cursor-pointer hover:border-blue-500 transition-colors {isDragOver ? 'border-blue-500 bg-blue-50' : 'bg-white'}"
+          role="button"
+          tabindex="0"
           ondragover={handleDragOver}
           ondragleave={handleDragLeave}
           ondrop={handleDrop}
           onclick={() => document.getElementById('file-input')?.click()}
+          onkeydown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              document.getElementById('file-input')?.click();
+            }
+          }}
         >
           {#if inputImageUrl}
             <div class="relative">
@@ -309,8 +317,9 @@
         
         <!-- Scale Factor -->
         <div class="mb-3">
-          <label class="block text-sm font-bold text-black mb-1">Scale Factor</label>
+          <label class="block text-sm font-bold text-black mb-1" for="scale-factor">Scale Factor</label>
           <select 
+            id="scale-factor"
             class="w-full border border-gray-500 p-2 text-sm bg-white text-black"
             bind:value={scaleFactor}
           >

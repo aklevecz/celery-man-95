@@ -779,7 +779,7 @@
         
         <!-- Quick category buttons -->
         <div class="mb-3">
-          <label class="block text-xs font-bold mb-1">Quick Categories:</label>
+          <div class="block text-xs font-bold mb-1">Quick Categories:</div>
           <div class="flex flex-wrap gap-1">
             {#each geminiApi.getSceneCategories().slice(0, 6) as category}
               <button

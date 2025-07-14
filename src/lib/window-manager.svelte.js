@@ -5,6 +5,8 @@ function createWindowManager() {
 	/** @type {string | null} */
 	let activeWindowId = $state(null);
 	let zIndexCounter = 1000;
+	/** @type {Map<string, Set<Function>>} */
+	let windowCloseListeners = new Map();
 
 	const LOCAL_STORAGE_KEY = 'window_manager_state';
 
@@ -156,6 +158,19 @@ function createWindowManager() {
 		const windowIndex = windows.findIndex((w) => w.id === windowId);
 		if (windowIndex === -1) return;
 
+		// Notify listeners before removing the window
+		const listeners = windowCloseListeners.get(windowId);
+		if (listeners) {
+			listeners.forEach(callback => {
+				try {
+					callback();
+				} catch (error) {
+					console.error('Error in window close callback:', error);
+				}
+			});
+			windowCloseListeners.delete(windowId);
+		}
+
 		windows.splice(windowIndex, 1);
 
 		if (activeWindowId === windowId) {
@@ -280,6 +295,29 @@ function createWindowManager() {
 		saveWindowState();
 	}
 
+	/**
+	 * Register a callback to be called when a window is closed
+	 * @param {string} windowId - The ID of the window to listen to
+	 * @param {Function} callback - The callback function to call when the window is closed
+	 * @returns {Function} An unsubscribe function
+	 */
+	function onWindowClose(windowId, callback) {
+		if (!windowCloseListeners.has(windowId)) {
+			windowCloseListeners.set(windowId, new Set());
+		}
+		
+		const listeners = windowCloseListeners.get(windowId);
+		listeners.add(callback);
+		
+		// Return unsubscribe function
+		return () => {
+			listeners.delete(callback);
+			if (listeners.size === 0) {
+				windowCloseListeners.delete(windowId);
+			}
+		};
+	}
+
 	return {
 		get windows() {
 			return windows;
@@ -301,7 +339,8 @@ function createWindowManager() {
 		registerWindowCreator,
 		loadWindowState,
 		saveWindowState,
-		clearWindowState
+		clearWindowState,
+		onWindowClose
 	};
 }
 

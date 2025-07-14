@@ -154,6 +154,13 @@ function createChatManager() {
   // Load sessions from localStorage
   function loadSessions() {
     try {
+      if (typeof localStorage === 'undefined') {
+        // Create default session if localStorage is not available
+        if (sessions.length === 0) {
+          createNewSession();
+        }
+        return;
+      }
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         sessions = JSON.parse(stored);
@@ -175,7 +182,9 @@ function createChatManager() {
   // Save sessions to localStorage
   function saveSessions() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+      }
     } catch (err) {
       console.error('Failed to save chat sessions:', err);
       error = 'Failed to save chat history';
