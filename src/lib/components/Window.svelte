@@ -117,7 +117,7 @@
     background: var(--theme-window);
     border: 2px outset var(--theme-windowBorder);
     box-shadow: 2px 2px 4px var(--theme-shadow);
-    user-select: none;
+    /* user-select: none; */
     font-family: 'MS Sans Serif', 'Microsoft Sans Serif', 'Tahoma', 'Arial', sans-serif;
     font-size: 11px;
   }

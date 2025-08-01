@@ -8,9 +8,17 @@
     IMAGE_TO_VIDEO: 'image-to-video'
   };
 
+  // Video models
+  const VIDEO_MODELS = {
+    SEEDANCE: 'seedance',
+    WAN: 'wan'
+  };
+
   // State variables
   let mode = $state(MODES.TEXT_TO_VIDEO);
+  let selectedModel = $state(VIDEO_MODELS.SEEDANCE);
   let prompt = $state('');
+  let negativePrompt = $state('');
   let aspectRatio = $state('16:9');
   let resolution = $state('1080p');
   let duration = $state('5');
@@ -18,6 +26,19 @@
   let seed = $state('');
   let isGenerating = $state(false);
   let error = $state('');
+  
+  // WAN-specific parameters
+  let numFrames = $state(81);
+  let framesPerSecond = $state(16);
+  let numInferenceSteps = $state(30);
+  let enableSafetyChecker = $state(true);
+  let enablePromptExpansion = $state(false);
+  let guidanceScale = $state(3.5);
+  let guidanceScale2 = $state(4);
+  let shift = $state(5);
+  let interpolatorModel = $state('film');
+  let numInterpolatedFrames = $state(1);
+  let adjustFpsForInterpolation = $state(true);
   
   // Image input state (for image-to-video mode)
   /** @type {string | null} */
@@ -32,9 +53,16 @@
 
   // Configuration options
   const aspectRatios = ['21:9', '16:9', '4:3', '1:1', '3:4', '9:16'];
-  const resolutions = ['480p', '1080p'];
+  const resolutions = ['480p', '580p', '720p', '1080p'];
   const durations = ['5', '10'];
   const acceptedFileTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
+  
+  // WAN-specific options
+  const frameRanges = [81, 91, 101, 111, 121];
+  const fpsRanges = [4, 8, 12, 16, 24, 30, 60];
+  const inferenceStepRanges = [2, 10, 20, 30, 40];
+  const interpolatorOptions = ['none', 'film', 'rife'];
+  const interpolatedFrameRanges = [0, 1, 2, 3, 4];
 
   // Initialize component
 
@@ -167,60 +195,90 @@
       return;
     }
 
+    // WAN model only supports text-to-video
+    if (selectedModel === VIDEO_MODELS.WAN && mode === MODES.IMAGE_TO_VIDEO) {
+      error = 'WAN model currently only supports text-to-video generation';
+      return;
+    }
+
     isGenerating = true;
     error = '';
     generatedVideoUrl = null;
 
     try {
-      // Determine model based on mode
-      const model = mode === MODES.TEXT_TO_VIDEO 
-        ? models.seedance_pro_text_to_video 
-        : models.seedance_pro_image_to_video;
+      let model, options, videoUrl;
 
-      // Prepare options
-      const options = {
-        prompt: prompt.trim(),
-        aspect_ratio: aspectRatio,
-        resolution: resolution,
-        duration: duration,
-        camera_fixed: cameraFixed,
-        seed: seed.trim() ? parseInt(seed) : undefined,
-      };
-
-      // Add image for image-to-video mode
-      if (mode === MODES.IMAGE_TO_VIDEO && referenceImageUrl) {
-        let imageData = referenceImageUrl;
+      if (selectedModel === VIDEO_MODELS.WAN) {
+        // WAN model generation
+        model = models.wan_text_to_video;
         
-        if (referenceImageUrl.startsWith('blob:')) {
-          // Convert blob URL to data URI
-          const response = await fetch(referenceImageUrl);
-          const blob = await response.blob();
-          const dataUri = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-              const result = reader.result;
-              if (typeof result === 'string') {
-                resolve(result);
-              } else {
-                resolve('');
-              }
-            };
-            reader.readAsDataURL(blob);
-          });
-          imageData = dataUri;
+        options = {
+          prompt: prompt.trim(),
+          negative_prompt: negativePrompt.trim() || undefined,
+          num_frames: numFrames,
+          frames_per_second: framesPerSecond,
+          resolution: resolution === '1080p' ? '720p' : resolution, // WAN doesn't support 1080p
+          aspect_ratio: aspectRatio,
+          seed: seed.trim() ? parseInt(seed) : undefined,
+          num_inference_steps: numInferenceSteps,
+          enable_safety_checker: enableSafetyChecker,
+          enable_prompt_expansion: enablePromptExpansion,
+          guidance_scale: guidanceScale,
+          guidance_scale_2: guidanceScale2,
+          shift: shift,
+          interpolator_model: interpolatorModel,
+          num_interpolated_frames: numInterpolatedFrames,
+          adjust_fps_for_interpolation: adjustFpsForInterpolation,
+        };
+
+        console.log('🎭 Generating WAN video with options:', options);
+        videoUrl = await falApi.generateWanVideo(model, options);
+      } else {
+        // Seedance model generation
+        model = mode === MODES.TEXT_TO_VIDEO 
+          ? models.seedance_pro_text_to_video 
+          : models.seedance_pro_image_to_video;
+
+        options = {
+          prompt: prompt.trim(),
+          aspect_ratio: aspectRatio,
+          resolution: resolution,
+          duration: duration,
+          camera_fixed: cameraFixed,
+          seed: seed.trim() ? parseInt(seed) : undefined,
+        };
+
+        // Add image for image-to-video mode
+        if (mode === MODES.IMAGE_TO_VIDEO && referenceImageUrl) {
+          let imageData = referenceImageUrl;
+          
+          if (referenceImageUrl.startsWith('blob:')) {
+            // Convert blob URL to data URI
+            const response = await fetch(referenceImageUrl);
+            const blob = await response.blob();
+            const dataUri = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const result = reader.result;
+                if (typeof result === 'string') {
+                  resolve(result);
+                } else {
+                  resolve('');
+                }
+              };
+              reader.readAsDataURL(blob);
+            });
+            imageData = dataUri;
+          }
+          
+          /** @type {any} */
+          options.image_url = imageData;
+          delete options.aspect_ratio
         }
-        
-        /** @type {any} */
-        options.image_url = imageData;
-        delete options.aspect_ratio
+
+        console.log('🎬 Generating Seedance video with options:', options);
+        videoUrl = await falApi.generateSeedanceVideo(model, options);
       }
-
-
-
-      console.log('🎬 Generating video with options:', options);
-
-      // Generate video
-      const videoUrl = await falApi.generateSeedanceVideo(model, options);
       
       if (videoUrl) {
         generatedVideoUrl = videoUrl;
@@ -246,17 +304,38 @@
     if (!generatedVideoUrl || !prompt.trim()) return;
 
     try {
-      const parameters = {
-        aspect_ratio: aspectRatio,
-        resolution: resolution,
-        duration: duration,
-        camera_fixed: cameraFixed,
-        seed: seed.trim() ? parseInt(seed) : undefined,
-      };
+      let parameters, model;
 
-      const model = mode === MODES.TEXT_TO_VIDEO 
-        ? models.seedance_pro_text_to_video 
-        : models.seedance_pro_image_to_video;
+      if (selectedModel === VIDEO_MODELS.WAN) {
+        parameters = {
+          aspect_ratio: aspectRatio,
+          resolution: resolution,
+          num_frames: numFrames,
+          frames_per_second: framesPerSecond,
+          num_inference_steps: numInferenceSteps,
+          enable_safety_checker: enableSafetyChecker,
+          enable_prompt_expansion: enablePromptExpansion,
+          guidance_scale: guidanceScale,
+          guidance_scale_2: guidanceScale2,
+          shift: shift,
+          interpolator_model: interpolatorModel,
+          num_interpolated_frames: numInterpolatedFrames,
+          adjust_fps_for_interpolation: adjustFpsForInterpolation,
+          seed: seed.trim() ? parseInt(seed) : undefined,
+        };
+        model = models.wan_text_to_video;
+      } else {
+        parameters = {
+          aspect_ratio: aspectRatio,
+          resolution: resolution,
+          duration: duration,
+          camera_fixed: cameraFixed,
+          seed: seed.trim() ? parseInt(seed) : undefined,
+        };
+        model = mode === MODES.TEXT_TO_VIDEO 
+          ? models.seedance_pro_text_to_video 
+          : models.seedance_pro_image_to_video;
+      }
 
       await videoStorage.saveVideo(
         generatedVideoUrl,
@@ -312,37 +391,66 @@
   <!-- Header -->
   <div class="p-3 border-b border-gray-500 bg-gray-300">
     <h2 class="m-0 text-2xl font-bold text-black">Cinemator - AI Video Generator</h2>
-    <p class="mt-1 mb-0 text-lg text-gray-600">Powered by Seedance Pro</p>
+    <p class="mt-1 mb-0 text-lg text-gray-600">
+      Powered by {selectedModel === VIDEO_MODELS.WAN ? 'WAN v2.2-a14b' : 'Seedance Pro'}
+    </p>
   </div>
 
   <div class="p-4 border-b border-gray-500">
-    <!-- Mode Selection -->
+    <!-- Model Selection -->
     <div class="mb-4">
-      <div class="block mb-2 text-lg font-bold">Generation Mode:</div>
+      <div class="block mb-2 text-lg font-bold">AI Model:</div>
       <div class="flex gap-4">
         <label class="flex items-center text-base font-bold">
           <input 
             type="radio" 
             class="mr-2" 
-            bind:group={mode} 
-            value={MODES.TEXT_TO_VIDEO}
+            bind:group={selectedModel} 
+            value={VIDEO_MODELS.SEEDANCE}
           />
-          Text-to-Video
+          Seedance Pro (Text/Image to Video)
         </label>
         <label class="flex items-center text-base font-bold">
           <input 
             type="radio" 
             class="mr-2" 
-            bind:group={mode} 
-            value={MODES.IMAGE_TO_VIDEO}
+            bind:group={selectedModel} 
+            value={VIDEO_MODELS.WAN}
           />
-          Image-to-Video
+          WAN v2.2-a14b (Text to Video)
         </label>
       </div>
     </div>
 
-    <!-- Reference Image Input (only for image-to-video mode) -->
-    {#if mode === MODES.IMAGE_TO_VIDEO}
+    <!-- Mode Selection (only show for Seedance) -->
+    {#if selectedModel === VIDEO_MODELS.SEEDANCE}
+      <div class="mb-4">
+        <div class="block mb-2 text-lg font-bold">Generation Mode:</div>
+        <div class="flex gap-4">
+          <label class="flex items-center text-base font-bold">
+            <input 
+              type="radio" 
+              class="mr-2" 
+              bind:group={mode} 
+              value={MODES.TEXT_TO_VIDEO}
+            />
+            Text-to-Video
+          </label>
+          <label class="flex items-center text-base font-bold">
+            <input 
+              type="radio" 
+              class="mr-2" 
+              bind:group={mode} 
+              value={MODES.IMAGE_TO_VIDEO}
+            />
+            Image-to-Video
+          </label>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Reference Image Input (only for Seedance image-to-video mode) -->
+    {#if selectedModel === VIDEO_MODELS.SEEDANCE && mode === MODES.IMAGE_TO_VIDEO}
       <div class="mb-4">
         <div class="block mb-2 text-lg font-bold">Reference Image:</div>
         <div 
@@ -404,12 +512,26 @@
       ></textarea>
     </div>
 
+    <!-- Negative Prompt Input (only for WAN model) -->
+    {#if selectedModel === VIDEO_MODELS.WAN}
+      <div class="mb-4">
+        <label for="negative-prompt-input" class="block mb-2 text-lg font-bold">Negative Prompt (optional):</label>
+        <textarea
+          id="negative-prompt-input"
+          class="w-full h-20 border border-gray-500 p-3 text-lg font-sans resize-y bg-white text-black box-border disabled:bg-gray-200 disabled:text-gray-600"
+          bind:value={negativePrompt}
+          placeholder="Describe what you want to avoid in the video..."
+          disabled={isGenerating}
+        ></textarea>
+      </div>
+    {/if}
+
     <!-- Generation Parameters -->
     <div class="grid grid-cols-2 gap-4 mb-4">
       <div>
         <label for="aspect-ratio" class="block mb-1 text-base font-bold">Aspect Ratio:</label>
         <select id="aspect-ratio" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={aspectRatio}>
-          {#each aspectRatios as ratio}
+          {#each aspectRatios.filter(ratio => selectedModel === VIDEO_MODELS.WAN ? ['16:9', '9:16', '1:1'].includes(ratio) : true) as ratio}
             <option value={ratio}>{ratio}</option>
           {/each}
         </select>
@@ -418,20 +540,82 @@
       <div>
         <label for="resolution" class="block mb-1 text-base font-bold">Resolution:</label>
         <select id="resolution" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={resolution}>
-          {#each resolutions as res}
+          {#each resolutions.filter(res => selectedModel === VIDEO_MODELS.WAN ? ['480p', '580p', '720p'].includes(res) : true) as res}
             <option value={res}>{res}</option>
           {/each}
         </select>
       </div>
 
-      <div>
-        <label for="duration" class="block mb-1 text-base font-bold">Duration:</label>
-        <select id="duration" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={duration}>
-          {#each durations as dur}
-            <option value={dur}>{dur} seconds</option>
-          {/each}
-        </select>
-      </div>
+      {#if selectedModel === VIDEO_MODELS.SEEDANCE}
+        <div>
+          <label for="duration" class="block mb-1 text-base font-bold">Duration:</label>
+          <select id="duration" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={duration}>
+            {#each durations as dur}
+              <option value={dur}>{dur} seconds</option>
+            {/each}
+          </select>
+        </div>
+      {:else}
+        <div>
+          <label for="num-frames" class="block mb-1 text-base font-bold">Number of Frames:</label>
+          <select id="num-frames" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={numFrames}>
+            {#each frameRanges as frames}
+              <option value={frames}>{frames} frames</option>
+            {/each}
+          </select>
+        </div>
+
+        <div>
+          <label for="fps" class="block mb-1 text-base font-bold">Frames Per Second:</label>
+          <select id="fps" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={framesPerSecond}>
+            {#each fpsRanges as fps}
+              <option value={fps}>{fps} FPS</option>
+            {/each}
+          </select>
+        </div>
+
+        <div>
+          <label for="guidance-scale" class="block mb-1 text-base font-bold">Guidance Scale:</label>
+          <input id="guidance-scale" type="number" step="0.1" min="1" max="10" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={guidanceScale} placeholder="3.5">
+        </div>
+
+        <div>
+          <label for="interpolator" class="block mb-1 text-base font-bold">Interpolator Model:</label>
+          <select id="interpolator" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={interpolatorModel}>
+            {#each interpolatorOptions as interp}
+              <option value={interp}>{interp}</option>
+            {/each}
+          </select>
+        </div>
+
+        <div>
+          <label for="num-interpolated-frames" class="block mb-1 text-base font-bold">Interpolated Frames:</label>
+          <select id="num-interpolated-frames" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={numInterpolatedFrames}>
+            {#each interpolatedFrameRanges as frames}
+              <option value={frames}>{frames} frames</option>
+            {/each}
+          </select>
+        </div>
+
+        <div>
+          <label for="inference-steps" class="block mb-1 text-base font-bold">Inference Steps:</label>
+          <select id="inference-steps" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={numInferenceSteps}>
+            {#each inferenceStepRanges as steps}
+              <option value={steps}>{steps} steps</option>
+            {/each}
+          </select>
+        </div>
+
+        <div>
+          <label for="guidance-scale-2" class="block mb-1 text-base font-bold">Guidance Scale 2:</label>
+          <input id="guidance-scale-2" type="number" step="0.1" min="1" max="10" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={guidanceScale2} placeholder="4">
+        </div>
+
+        <div>
+          <label for="shift" class="block mb-1 text-base font-bold">Shift:</label>
+          <input id="shift" type="number" step="0.1" min="1" max="10" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={shift} placeholder="5">
+        </div>
+      {/if}
 
       <div>
         <label for="seed" class="block mb-1 text-base font-bold">Seed (optional):</label>
@@ -439,13 +623,33 @@
       </div>
     </div>
 
-    <!-- Camera Fixed Option -->
-    <div class="mb-4">
-      <label class="flex items-center text-base font-bold">
-        <input type="checkbox" class="mr-2" bind:checked={cameraFixed}>
-        Fixed Camera (static camera position)
-      </label>
-    </div>
+    <!-- Camera Fixed Option (only for Seedance) -->
+    {#if selectedModel === VIDEO_MODELS.SEEDANCE}
+      <div class="mb-4">
+        <label class="flex items-center text-base font-bold">
+          <input type="checkbox" class="mr-2" bind:checked={cameraFixed}>
+          Fixed Camera (static camera position)
+        </label>
+      </div>
+    {/if}
+
+    <!-- WAN Boolean Options -->
+    {#if selectedModel === VIDEO_MODELS.WAN}
+      <div class="mb-4 grid grid-cols-1 gap-2">
+        <label class="flex items-center text-base font-bold">
+          <input type="checkbox" class="mr-2" bind:checked={enableSafetyChecker}>
+          Enable Safety Checker
+        </label>
+        <label class="flex items-center text-base font-bold">
+          <input type="checkbox" class="mr-2" bind:checked={enablePromptExpansion}>
+          Enable Prompt Expansion
+        </label>
+        <label class="flex items-center text-base font-bold">
+          <input type="checkbox" class="mr-2" bind:checked={adjustFpsForInterpolation}>
+          Adjust FPS for Interpolation
+        </label>
+      </div>
+    {/if}
 
     <!-- Action Buttons -->
     <div class="flex gap-2 items-center">

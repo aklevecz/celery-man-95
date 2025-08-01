@@ -14,8 +14,11 @@ export const models = {
   flux_pro_1_1_ultra: "fal-ai/flux-pro/v1.1-ultra",
   flux_kontext_pro: "fal-ai/flux-pro/kontext",
   flux_kontext_pro_text_to_image: "fal-ai/flux-pro/kontext/text-to-image",
+  flux_kontext_lora: "fal-ai/flux-kontext-lora",
+  flux_kontext_lora_text_to_image: "fal-ai/flux-kontext-lora/text-to-image",
   seedance_pro_text_to_video: "fal-ai/bytedance/seedance/v1/pro/text-to-video",
   seedance_pro_image_to_video: "fal-ai/bytedance/seedance/v1/pro/image-to-video",
+  wan_text_to_video: "fal-ai/wan/v2.2-a14b/text-to-video",
   clarity_upscaler: "fal-ai/clarity-upscaler",
   esrgan: "fal-ai/esrgan",
   creative_upscaler: "fal-ai/creative-upscaler",
@@ -62,7 +65,7 @@ const createFalApi = () => {
    * @returns {Promise<string | null>} - The URL of the generated image, or null on failure
    */
   async function generateFluxImage(model, options) {
-    const { prompt, image_url, ...otherOptions } = options;
+    const { prompt, image_url, loras, ...otherOptions } = options;
     // For FLUX Kontext, choose the correct endpoint based on whether image_url is provided
     let actualModel = model;
     if (model === models.flux_kontext_pro) {
@@ -79,6 +82,10 @@ const createFalApi = () => {
     const inputParams = { prompt, ...otherOptions };
     if (image_url) {
       inputParams.image_url = image_url;
+    }
+    // Add loras parameter for flux-kontext-lora model
+    if (model === models.flux_kontext_lora && loras && loras.length > 0) {
+      inputParams.loras = loras;
     }
 
     // Debug logging
@@ -457,10 +464,96 @@ const createFalApi = () => {
     }
   }
 
+  /**
+   * Generate a video using WAN text-to-video model from fal.ai
+   * @param {string} model - The WAN model to use
+   * @param {Object} options - The options for video generation
+   * @param {string} options.prompt - Text description for video generation
+   * @param {string} options.negative_prompt - What to avoid in generation
+   * @param {number} options.num_frames - Number of frames (81-121)
+   * @param {number} options.frames_per_second - FPS (4-60)
+   * @param {string} options.resolution - Resolution "480p", "580p", or "720p"
+   * @param {string} options.aspect_ratio - Aspect ratio "16:9", "9:16", or "1:1"
+   * @param {number} options.seed - Random seed for reproducibility
+   * @param {number} options.num_inference_steps - Sampling steps (2-40)
+   * @param {boolean} options.enable_safety_checker - Check input safety
+   * @param {boolean} options.enable_prompt_expansion - Expand prompt details
+   * @param {number} options.guidance_scale - Prompt adherence scale (1-10)
+   * @param {number} options.guidance_scale_2 - Second-stage guidance scale (1-10)
+   * @param {number} options.shift - Video shift value (1-10)
+   * @param {string} options.interpolator_model - "none", "film", or "rife"
+   * @param {number} options.num_interpolated_frames - Frames to interpolate (0-4)
+   * @param {boolean} options.adjust_fps_for_interpolation - Adjust FPS for interpolation
+   * @returns {Promise<string | null>} - The URL of the generated video, or null on failure
+   */
+  async function generateWanVideo(model, options) {
+    const { prompt, ...otherOptions } = options;
+    /** @type {Record<string, any>} */
+    const otherOpts = otherOptions;
+
+    // Validate inputs
+    if (!model || typeof model !== "string") {
+      throw new Error("Invalid model specified");
+    }
+
+    if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+      throw new Error("Prompt is required");
+    }
+
+    // Prepare input parameters - clean up undefined values
+    /** @type {Record<string, any>} */
+    const inputParams = { prompt: prompt.trim() };
+
+    // Add other options only if they have valid values
+    Object.keys(otherOpts).forEach((key) => {
+      const value = otherOpts[key];
+      if (value !== undefined && value !== null && value !== "") {
+        inputParams[key] = value;
+      }
+    });
+
+    // Debug logging
+    console.log("🎭 Debug: WAN Model:", model);
+    console.log("🎭 Debug: WAN Input Params:", inputParams);
+
+    try {
+      const result = await fal.subscribe(model, {
+        input: inputParams,
+        logs: true,
+        onQueueUpdate: (update) => {
+          console.log("🎭 WAN Queue Update:", update);
+          if (update.status === "IN_PROGRESS" && update.logs) {
+            update.logs.map((log) => log.message).forEach(console.log);
+          }
+        },
+      });
+
+      // Debug the full result
+      console.log("🎭 WAN Final Result:", result);
+
+      // Check for video in response
+      if (result?.data?.video?.url) {
+        return result.data.video.url;
+      }
+
+      // Check for errors in the response
+      if (result?.data?.error) {
+        throw new Error(`API Error: ${result.data.error}`);
+      }
+
+      console.warn("No video URL found in WAN response:", result);
+      return null;
+    } catch (error) {
+      console.error("WAN video generation error:", error);
+      throw error;
+    }
+  }
+
   return {
     generateFluxImage,
     generateSeedanceImageToVideo,
     generateSeedanceVideo,
+    generateWanVideo,
     generateUpscaledImage,
     generateUpscaledVideo,
     uploadFile,

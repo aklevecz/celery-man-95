@@ -19,6 +19,7 @@
   import ImageAnalyzerController from "$lib/windows/image-analyzer/ImageAnalyzerController.svelte.js";
   import PromptGeneratorController from "$lib/windows/prompt-generator/PromptGeneratorController.svelte.js";
   import LightingStudioController from "$lib/windows/lighting-studio/LightingStudioController.svelte.js";
+  import LoRAStudioController from "$lib/windows/lora-studio/LoRAStudioController.svelte.js";
   // Initialize window manager and theme manager on page load
   onMount(() => {
     windowManager.loadWindowState();
@@ -97,6 +98,10 @@
     <button class="desktop-icon" on:click={PromptGeneratorController.openPromptGeneratorWindow}>
       <div class="icon">✨</div>
       <div class="label">Prompt Generator</div>
+    </button>
+    <button class="desktop-icon" on:click={LoRAStudioController.openLoRAStudioWindow}>
+      <div class="icon">🔗</div>
+      <div class="label">LoRA Studio</div>
     </button>
     <!-- <button class="desktop-icon" on:click={LightingStudioController.openLightingStudioWindow}>
       <div class="icon">💡</div>

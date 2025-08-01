@@ -4,11 +4,11 @@
   import { imageManager } from "$lib/image-manager.svelte.js";
   import { geminiApi } from "$lib/gemini-api.svelte.js";
   import { settingsManager } from "$lib/settings-manager.svelte.js";
-  import { 
-    fileToReferenceImage, 
-    stitchImages, 
+  import {
+    fileToReferenceImage,
+    stitchImages,
     cleanupImageUrls,
-    getImageDimensions 
+    getImageDimensions,
   } from "$lib/image-utils.js";
 
   /**
@@ -16,7 +16,7 @@
    * @typedef {'jpeg' | 'png'} OutputFormat
    * @typedef {'1' | '2' | '3' | '4' | '5' | '6'} SafetyTolerance
    * @typedef {'horizontal' | 'vertical' | 'grid'} StitchMode
-   * 
+   *
    * @typedef {Object} ReferenceImage
    * @property {string} id - Unique identifier
    * @property {File | null} file - Original file object
@@ -24,7 +24,7 @@
    * @property {string} name - Display name
    * @property {number} width - Image width
    * @property {number} height - Image height
-   * 
+   *
    * @typedef {Object} ImageGenerationOptions
    * @property {string} prompt - The text prompt for image generation
    * @property {string} [image_url] - Optional reference image URL for image-to-image generation
@@ -74,12 +74,12 @@
   /** @type {boolean} */
   let isDragOver = $state(false);
   /** @type {StitchMode} */
-  let stitchMode = $state('horizontal');
+  let stitchMode = $state("horizontal");
   /** @type {boolean} */
   let isGeneratingComposite = $state(false);
   /** @type {boolean} */
   let useMultipleImages = $state(false);
-  
+
   // Legacy single image support
   /** @type {string | null} */
   let referenceImageUrl = $state(null);
@@ -90,7 +90,7 @@
   /** @type {string} */
   let scenePremise = $state("");
   /** @type {'detailed' | 'artistic' | 'realistic' | 'cinematic'} */
-  let promptStyle = $state('detailed');
+  let promptStyle = $state("detailed");
   /** @type {boolean} */
   let appendMode = $state(false);
   /** @type {boolean} */
@@ -98,7 +98,7 @@
 
   // Image description state
   /** @type {'prompt' | 'artistic' | 'technical' | 'subject' | 'style'} */
-  let imageDescriptionStyle = $state('prompt');
+  let imageDescriptionStyle = $state("prompt");
 
   // Provider selection state
   /** @type {'fal' | 'blackforest'} */
@@ -117,21 +117,38 @@
   const outputFormats = ["jpeg", "png"];
   /** @type {SafetyTolerance[]} */
   const safetyTolerances = ["1", "2", "3", "4", "5", "6"];
-  const acceptedFileTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif", "image/avif"];
-  
+  const acceptedFileTypes = [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/avif",
+  ];
+
   /** @type {StitchMode[]} */
-  const stitchModes = ['horizontal', 'vertical', 'grid'];
-  
+  const stitchModes = ["horizontal", "vertical", "grid"];
+
   const stitchModeLabels = {
-    horizontal: 'Side by Side',
-    vertical: 'Top to Bottom', 
-    grid: 'Grid Layout'
+    horizontal: "Side by Side",
+    vertical: "Top to Bottom",
+    grid: "Grid Layout",
   };
 
   /** @type {Array<{key: string, value: string, label: string, description: string}>} */
   const modelOptions = [
-    { key: "flux_pro_1_1_ultra", value: models.flux_pro_1_1_ultra, label: "FLUX Pro 1.1 Ultra", description: "High-quality text-to-image generation" },
-    { key: "flux_kontext_pro", value: models.flux_kontext_pro, label: "FLUX Kontext Pro", description: "Text-to-image + image editing capabilities" },
+    {
+      key: "flux_pro_1_1_ultra",
+      value: models.flux_pro_1_1_ultra,
+      label: "FLUX Pro 1.1 Ultra",
+      description: "High-quality text-to-image generation",
+    },
+    {
+      key: "flux_kontext_pro",
+      value: models.flux_kontext_pro,
+      label: "FLUX Kontext Pro",
+      description: "Text-to-image + image editing capabilities",
+    },
   ];
 
   /**
@@ -198,30 +215,31 @@
   async function processMultipleFiles(files) {
     try {
       error = "";
-      
+
       // Filter valid image files
-      const validFiles = files.filter(file => acceptedFileTypes.includes(file.type));
-      
+      const validFiles = files.filter((file) =>
+        acceptedFileTypes.includes(file.type),
+      );
+
       if (validFiles.length === 0) {
         error = "Please select valid image files (JPG, PNG, WebP, GIF, AVIF)";
         return;
       }
-      
+
       if (validFiles.length !== files.length) {
         error = `Skipped ${files.length - validFiles.length} invalid file(s)`;
       }
-      
+
       // Convert files to ReferenceImage objects
       const newImages = await Promise.all(
-        validFiles.map(file => fileToReferenceImage(file))
+        validFiles.map((file) => fileToReferenceImage(file)),
       );
-      
+
       referenceImages = [...referenceImages, ...newImages];
-      
+
       // Clear single image state when using multiple
       selectedFile = null;
       referenceImageUrl = null;
-      
     } catch (err) {
       error = "Failed to process image files";
       console.error("File processing error:", err);
@@ -241,30 +259,32 @@
     // Clear single image
     selectedFile = null;
     referenceImageUrl = null;
-    
+
     // Clear multiple images
     cleanupImageUrls(referenceImages);
     referenceImages = [];
     compositeImageUrl = null;
-    
+
     // Reset file input
-    const fileInput = /** @type {HTMLInputElement} */ (document.getElementById("reference-image-input"));
+    const fileInput = /** @type {HTMLInputElement} */ (
+      document.getElementById("reference-image-input")
+    );
     if (fileInput) fileInput.value = "";
   }
-  
+
   /**
    * Remove a specific image from the reference images array
    * @param {string} imageId - ID of the image to remove
    */
   function removeReferenceImage(imageId) {
-    const imageIndex = referenceImages.findIndex(img => img.id === imageId);
+    const imageIndex = referenceImages.findIndex((img) => img.id === imageId);
     if (imageIndex >= 0) {
       const imageToRemove = referenceImages[imageIndex];
-      if (imageToRemove.url.startsWith('blob:')) {
+      if (imageToRemove.url.startsWith("blob:")) {
         URL.revokeObjectURL(imageToRemove.url);
       }
-      referenceImages = referenceImages.filter(img => img.id !== imageId);
-      
+      referenceImages = referenceImages.filter((img) => img.id !== imageId);
+
       // Clear composite if no images left
       if (referenceImages.length === 0) {
         compositeImageUrl = null;
@@ -297,9 +317,16 @@
     isDragOver = false;
 
     // Check for image URL data (from gallery drag)
-    const imageUrl = event.dataTransfer?.getData("text/uri-list") || event.dataTransfer?.getData("text/plain");
+    const imageUrl =
+      event.dataTransfer?.getData("text/uri-list") ||
+      event.dataTransfer?.getData("text/plain");
 
-    if (imageUrl && (imageUrl.startsWith("http") || imageUrl.startsWith("blob:") || imageUrl.startsWith("data:"))) {
+    if (
+      imageUrl &&
+      (imageUrl.startsWith("http") ||
+        imageUrl.startsWith("blob:") ||
+        imageUrl.startsWith("data:"))
+    ) {
       // Handle dragged image URL from gallery
       try {
         if (useMultipleImages) {
@@ -309,9 +336,9 @@
             id: crypto.randomUUID(),
             file: null,
             url: imageUrl,
-            name: 'Dragged Image',
+            name: "Dragged Image",
             width: dimensions.width,
-            height: dimensions.height
+            height: dimensions.height,
           };
           referenceImages = [...referenceImages, newImage];
         } else {
@@ -347,13 +374,15 @@
 
     try {
       // Calculate seed value for both API and storage
-      const parsedSeed = seed.trim() ? parseInt(seed) : Math.floor(Math.random() * 1000000);
-      
+      const parsedSeed = seed.trim()
+        ? parseInt(seed)
+        : Math.floor(Math.random() * 1000000);
+
       // Combine main prompt with scene prompt
-      const combinedPrompt = scenePrompt.trim() 
+      const combinedPrompt = scenePrompt.trim()
         ? `${prompt.trim()} ${scenePrompt.trim()}`.trim()
         : prompt.trim();
-      
+
       /** @type {ImageGenerationOptions} */
       const options = {
         prompt: combinedPrompt,
@@ -368,7 +397,7 @@
 
       // Determine which image to use as reference
       let finalReferenceImage = null;
-      
+
       if (useMultipleImages && referenceImages.length > 0) {
         // Use composite image if available, otherwise generate it
         if (compositeImageUrl) {
@@ -378,7 +407,11 @@
         } else {
           // Generate composite on the fly
           try {
-            finalReferenceImage = await stitchImages(referenceImages, stitchMode, 10);
+            finalReferenceImage = await stitchImages(
+              referenceImages,
+              stitchMode,
+              10,
+            );
           } catch (err) {
             error = "Failed to create composite image for generation";
             console.error("Composite generation error:", err);
@@ -389,7 +422,7 @@
         // Single image mode
         finalReferenceImage = referenceImageUrl;
       }
-      
+
       // console.log("Final reference image:", finalReferenceImage);
 
       // Add image_url if reference image is provided
@@ -430,7 +463,7 @@
         // Use the first generated image
         const imageUrl = result.images[0].url;
         generatedImage = imageUrl;
-        
+
         // Prepare generation parameters for storage
         /** @type {GenerationParams} */
         const generationParams = {
@@ -445,10 +478,14 @@
           guidanceScale: options.guidance_scale,
           numInferenceSteps: options.num_inference_steps,
           hasReferenceImage: !!options.image_url, // Just store boolean flag instead of the data
-          provider: result.provider // Store which provider was used
+          provider: result.provider, // Store which provider was used
         };
-        
-        await imageManager.saveImage(imageUrl, combinedPrompt, generationParams);
+
+        await imageManager.saveImage(
+          imageUrl,
+          combinedPrompt,
+          generationParams,
+        );
       } else {
         error = "Failed to generate image";
       }
@@ -478,15 +515,15 @@
       error = "No images to combine";
       return;
     }
-    
+
     if (referenceImages.length === 1) {
       compositeImageUrl = referenceImages[0].url;
       return;
     }
-    
+
     isGeneratingComposite = true;
     error = "";
-    
+
     try {
       compositeImageUrl = await stitchImages(referenceImages, stitchMode, 10);
     } catch (err) {
@@ -496,7 +533,7 @@
       isGeneratingComposite = false;
     }
   }
-  
+
   function downloadImage() {
     if (generatedImage) {
       const link = document.createElement("a");
@@ -519,7 +556,7 @@
       const generatedPrompt = await geminiApi.generatePrompt({
         scenePremise,
         style: promptStyle,
-        appendMode
+        appendMode,
       });
 
       if (appendMode && prompt.trim()) {
@@ -540,7 +577,7 @@
    */
   function setScenePremise(category) {
     const categories = geminiApi.getSceneCategories();
-    const selectedCategory = categories.find(c => c.id === category);
+    const selectedCategory = categories.find((c) => c.id === category);
     if (selectedCategory) {
       scenePremise = selectedCategory.label.toLowerCase();
     }
@@ -555,7 +592,7 @@
       const description = await geminiApi.describeImage({
         image,
         style: imageDescriptionStyle,
-        appendMode: imageAppendMode
+        appendMode: imageAppendMode,
       });
 
       if (imageAppendMode && scenePrompt.trim()) {
@@ -569,11 +606,14 @@
       error = err.message || "Failed to describe image";
     }
   }
+
 </script>
 
 <div class="flex flex-col h-full font-sans bg-gray-300 text-black">
   <div class="p-3 border-b border-gray-500 bg-gray-300">
-    <h2 class="m-0 text-2xl font-bold text-black">Fluxor - AI Image Generator</h2>
+    <h2 class="m-0 text-2xl font-bold text-black">
+      Fluxor - AI Image Generator
+    </h2>
     <p class="mt-1 mb-0 text-lg text-gray-600">Powered by FLUX PRO 1.1 Ultra</p>
   </div>
 
@@ -583,48 +623,71 @@
       <!-- Mode Toggle -->
       <div class="mb-3">
         <label class="flex items-center text-base font-bold mb-2">
-          <input type="checkbox" class="mr-2" bind:checked={useMultipleImages}>
+          <input
+            type="checkbox"
+            class="mr-2"
+            bind:checked={useMultipleImages}
+          />
           Use Multiple Reference Images
         </label>
         {#if useMultipleImages}
-          <p class="text-sm text-gray-600">Upload multiple images to create a composite reference image</p>
+          <p class="text-sm text-gray-600">
+            Upload multiple images to create a composite reference image
+          </p>
         {:else}
           <p class="text-sm text-gray-600">Upload a single reference image</p>
         {/if}
       </div>
-      
-      <label for="reference-image-input" class="block mb-2 text-lg font-bold"> Reference Image{useMultipleImages ? 's' : ''} (optional): </label>
-      
+
+      <label for="reference-image-input" class="block mb-2 text-lg font-bold">
+        Reference Image{useMultipleImages ? "s" : ""} (optional):
+      </label>
+
       <!-- Stitch Mode Selection (only show when multiple images mode is active) -->
       {#if useMultipleImages && referenceImages.length > 1}
         <div class="mb-3 p-3 bg-gray-100 rounded">
-          <label for="stitch-mode-group" class="block mb-2 text-sm font-bold">Composition Style:</label>
-          <div class="flex gap-2" id="stitch-mode-group" role="group" aria-labelledby="stitch-mode-group">
+          <label for="stitch-mode-group" class="block mb-2 text-sm font-bold"
+            >Composition Style:</label
+          >
+          <div
+            class="flex gap-2"
+            id="stitch-mode-group"
+            role="group"
+            aria-labelledby="stitch-mode-group"
+          >
             {#each stitchModes as mode}
               <label class="flex items-center">
-                <input type="radio" bind:group={stitchMode} value={mode} class="mr-1">
+                <input
+                  type="radio"
+                  bind:group={stitchMode}
+                  value={mode}
+                  class="mr-1"
+                />
                 <span class="text-sm">{stitchModeLabels[mode]}</span>
               </label>
             {/each}
           </div>
-          <button 
+          <button
             class="mt-2 px-3 py-1 text-sm border border-gray-400 bg-white text-black cursor-pointer hover:bg-gray-50 disabled:bg-gray-200 disabled:cursor-not-allowed"
             onclick={generateCompositeImage}
             disabled={isGeneratingComposite}
           >
-            {isGeneratingComposite ? 'Creating...' : 'Preview Composite'}
+            {isGeneratingComposite ? "Creating..." : "Preview Composite"}
           </button>
         </div>
       {/if}
-      
+
       <div
-        class="border-2 border-dashed border-gray-400 rounded p-4 text-center cursor-pointer transition-colors {isDragOver ? 'border-blue-500 bg-blue-50' : 'hover:border-gray-600'}"
+        class="border-2 border-dashed border-gray-400 rounded p-4 text-center cursor-pointer transition-colors {isDragOver
+          ? 'border-blue-500 bg-blue-50'
+          : 'hover:border-gray-600'}"
         role="button"
         tabindex="0"
         ondragover={handleDragOver}
         ondragleave={handleDragLeave}
         ondrop={handleDrop}
-        onclick={() => document.getElementById("reference-image-input")?.click()}
+        onclick={() =>
+          document.getElementById("reference-image-input")?.click()}
         onkeydown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -640,7 +703,11 @@
               <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {#each referenceImages as img (img.id)}
                   <div class="relative group">
-                    <img src={img.url} alt={img.name} class="w-full h-20 object-cover border border-gray-500 rounded" />
+                    <img
+                      src={img.url}
+                      alt={img.name}
+                      class="w-full h-20 object-cover border border-gray-500 rounded"
+                    />
                     <button
                       class="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full hover:bg-red-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                       onclick={(event) => {
@@ -651,22 +718,32 @@
                     >
                       ×
                     </button>
-                    <div class="text-xs text-gray-600 mt-1 truncate">{img.name}</div>
+                    <div class="text-xs text-gray-600 mt-1 truncate">
+                      {img.name}
+                    </div>
                   </div>
                 {/each}
               </div>
-              
+
               <!-- Composite Preview -->
               {#if compositeImageUrl}
                 <div class="mt-3 p-2 bg-blue-50 rounded">
-                  <p class="text-sm font-bold text-blue-800 mb-2">Composite Preview:</p>
-                  <img src={compositeImageUrl} alt="Composite" class="max-w-full max-h-32 mx-auto border border-blue-300 rounded" />
+                  <p class="text-sm font-bold text-blue-800 mb-2">
+                    Composite Preview:
+                  </p>
+                  <img
+                    src={compositeImageUrl}
+                    alt="Composite"
+                    class="max-w-full max-h-32 mx-auto border border-blue-300 rounded"
+                  />
                 </div>
               {/if}
-              
+
               <div class="text-sm text-gray-600">
-                {referenceImages.length} image{referenceImages.length !== 1 ? 's' : ''} selected
-                <button 
+                {referenceImages.length} image{referenceImages.length !== 1
+                  ? "s"
+                  : ""} selected
+                <button
                   class="ml-2 text-red-600 hover:text-red-800 underline"
                   onclick={(event) => {
                     event.stopPropagation();
@@ -680,16 +757,26 @@
           {:else}
             <div class="py-8">
               <div class="text-4xl mb-2">📁</div>
-              <p class="text-base text-gray-600 mb-1">Drag & drop multiple images here, or click to select</p>
-              <p class="text-sm text-gray-500">Supports: JPG, PNG, WebP, GIF, AVIF</p>
-              <p class="text-sm text-blue-600 mt-2">💡 You can also drag images from the gallery!</p>
+              <p class="text-base text-gray-600 mb-1">
+                Drag & drop multiple images here, or click to select
+              </p>
+              <p class="text-sm text-gray-500">
+                Supports: JPG, PNG, WebP, GIF, AVIF
+              </p>
+              <p class="text-sm text-blue-600 mt-2">
+                💡 You can also drag images from the gallery!
+              </p>
             </div>
           {/if}
         {:else}
           <!-- Single Image Display -->
           {#if referenceImageUrl}
             <div class="relative">
-              <img src={referenceImageUrl} alt="Reference" class="max-w-full max-h-32 mx-auto border border-gray-500 rounded" />
+              <img
+                src={referenceImageUrl}
+                alt="Reference"
+                class="max-w-full max-h-32 mx-auto border border-gray-500 rounded"
+              />
               <button
                 class="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white text-xs rounded-full hover:bg-red-600 flex items-center justify-center"
                 onclick={(event) => clearReferenceImage(event)}
@@ -698,11 +785,11 @@
                 ×
               </button>
               <p class="mt-2 text-sm text-gray-600">{selectedFile?.name}</p>
-              
+
               {#if geminiApi.isAvailable()}
                 <div class="mt-2 flex flex-col gap-2">
                   <div class="flex gap-2 items-center">
-                    <select 
+                    <select
                       class="text-xs border border-gray-500 p-1 bg-white text-black"
                       bind:value={imageDescriptionStyle}
                       onclick={(e) => e.stopPropagation()}
@@ -715,13 +802,13 @@
                       <option value="technical">Technical Description</option>
                     </select>
                     <label class="flex items-center text-xs">
-                      <input 
-                        type="checkbox" 
-                        class="mr-1" 
+                      <input
+                        type="checkbox"
+                        class="mr-1"
                         bind:checked={imageAppendMode}
                         onclick={(e) => e.stopPropagation()}
                         onchange={(e) => e.stopPropagation()}
-                      >
+                      />
                       Append
                     </label>
                   </div>
@@ -734,9 +821,12 @@
                         describeImageToPrompt(imageToDescribe);
                       }
                     }}
-                    disabled={geminiApi.isGenerating || (!selectedFile && !referenceImageUrl)}
+                    disabled={geminiApi.isGenerating ||
+                      (!selectedFile && !referenceImageUrl)}
                   >
-                    {geminiApi.isGenerating ? 'Analyzing...' : 'Describe Image 🔍'}
+                    {geminiApi.isGenerating
+                      ? "Analyzing..."
+                      : "Describe Image 🔍"}
                   </button>
                 </div>
               {/if}
@@ -744,31 +834,39 @@
           {:else}
             <div class="py-8">
               <div class="text-4xl mb-2">📁</div>
-              <p class="text-base text-gray-600 mb-1">Drag & drop an image here, or click to select</p>
-              <p class="text-sm text-gray-500">Supports: JPG, PNG, WebP, GIF, AVIF</p>
-              <p class="text-sm text-blue-600 mt-2">💡 You can also drag images from the gallery!</p>
+              <p class="text-base text-gray-600 mb-1">
+                Drag & drop an image here, or click to select
+              </p>
+              <p class="text-sm text-gray-500">
+                Supports: JPG, PNG, WebP, GIF, AVIF
+              </p>
+              <p class="text-sm text-blue-600 mt-2">
+                💡 You can also drag images from the gallery!
+              </p>
             </div>
           {/if}
         {/if}
       </div>
-      <input 
-        id="reference-image-input" 
-        type="file" 
-        accept="image/*" 
+      <input
+        id="reference-image-input"
+        type="file"
+        accept="image/*"
         multiple={useMultipleImages}
-        class="hidden" 
-        onchange={handleFileSelect} 
+        class="hidden"
+        onchange={handleFileSelect}
       />
     </div>
 
     <div class="flex items-center justify-between mb-2">
-      <label for="prompt-input" class="text-lg font-bold">Enter your prompt:</label>
+      <label for="prompt-input" class="text-lg font-bold"
+        >Enter your prompt:</label
+      >
       {#if geminiApi.isAvailable()}
         <button
           class="px-3 py-1 text-sm border border-gray-400 bg-gray-300 text-black cursor-pointer btn-outset hover:bg-gray-400"
-          onclick={() => showRandomPromptSection = !showRandomPromptSection}
+          onclick={() => (showRandomPromptSection = !showRandomPromptSection)}
         >
-          {showRandomPromptSection ? 'Hide' : 'Random Prompt'} 🎲
+          {showRandomPromptSection ? "Hide" : "Random Prompt"} 🎲
         </button>
       {/if}
     </div>
@@ -776,7 +874,7 @@
     {#if showRandomPromptSection && geminiApi.isAvailable()}
       <div class="bg-gray-200 border border-gray-500 p-3 mb-3 rounded">
         <h4 class="text-sm font-bold mb-2">🎲 Random Prompt Generator</h4>
-        
+
         <!-- Quick category buttons -->
         <div class="mb-3">
           <div class="block text-xs font-bold mb-1">Quick Categories:</div>
@@ -795,7 +893,9 @@
 
         <!-- Custom scene premise -->
         <div class="mb-3">
-          <label for="scene-premise" class="block text-xs font-bold mb-1">Scene Premise:</label>
+          <label for="scene-premise" class="block text-xs font-bold mb-1"
+            >Scene Premise:</label
+          >
           <input
             id="scene-premise"
             type="text"
@@ -808,8 +908,14 @@
         <!-- Style and options -->
         <div class="grid grid-cols-2 gap-2 mb-3">
           <div>
-            <label for="prompt-style" class="block text-xs font-bold mb-1">Style:</label>
-            <select id="prompt-style" class="w-full border border-gray-500 p-1 text-xs bg-white text-black" bind:value={promptStyle}>
+            <label for="prompt-style" class="block text-xs font-bold mb-1"
+              >Style:</label
+            >
+            <select
+              id="prompt-style"
+              class="w-full border border-gray-500 p-1 text-xs bg-white text-black"
+              bind:value={promptStyle}
+            >
               {#each geminiApi.getStyleOptions() as style}
                 <option value={style.id}>{style.label}</option>
               {/each}
@@ -817,7 +923,7 @@
           </div>
           <div class="flex items-end">
             <label class="flex items-center text-xs">
-              <input type="checkbox" class="mr-1" bind:checked={appendMode}>
+              <input type="checkbox" class="mr-1" bind:checked={appendMode} />
               Append to existing prompt
             </label>
           </div>
@@ -830,7 +936,9 @@
             onclick={generateRandomPrompt}
             disabled={geminiApi.isGenerating || !scenePremise.trim()}
           >
-            {geminiApi.isGenerating ? 'Generating...' : 'Generate Random Prompt'}
+            {geminiApi.isGenerating
+              ? "Generating..."
+              : "Generate Random Prompt"}
           </button>
           {#if geminiApi.error}
             <span class="text-xs text-red-600">⚠️ {geminiApi.error}</span>
@@ -840,7 +948,8 @@
     {:else if !geminiApi.isAvailable()}
       <div class="bg-orange-100 border border-orange-300 p-2 mb-3 rounded">
         <p class="text-xs text-orange-700">
-          💡 Add a Gemini API key in Settings to enable random prompt generation for benchmarking.
+          💡 Add a Gemini API key in Settings to enable random prompt generation
+          for benchmarking.
         </p>
       </div>
     {/if}
@@ -855,7 +964,9 @@
     ></textarea>
 
     <div class="mt-3">
-      <label for="scene-prompt-input" class="block mb-2 text-base font-bold">Scene Prompt (added to main prompt):</label>
+      <label for="scene-prompt-input" class="block mb-2 text-base font-bold"
+        >Scene Prompt (added to main prompt):</label
+      >
       <textarea
         id="scene-prompt-input"
         class="w-full h-16 border border-gray-500 p-2 text-sm font-sans resize-y bg-white text-black box-border disabled:bg-gray-200 disabled:text-gray-600"
@@ -867,8 +978,14 @@
 
     <div class="grid grid-cols-3 gap-3 mt-3">
       <div>
-        <label for="model-select" class="block mb-1 text-base font-bold">Model:</label>
-        <select id="model-select" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={model}>
+        <label for="model-select" class="block mb-1 text-base font-bold"
+          >Model:</label
+        >
+        <select
+          id="model-select"
+          class="w-full border border-gray-500 p-2 text-base bg-white text-black"
+          bind:value={model}
+        >
           {#each modelOptions as modelOption}
             <option value={modelOption.value}>{modelOption.label}</option>
           {/each}
@@ -879,18 +996,29 @@
       </div>
 
       <div>
-        <label for="provider-select" class="block mb-1 text-base font-bold">Provider:</label>
-        <select id="provider-select" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={preferredProvider} onchange={() => {
-          settingsManager.setSetting('preferredFluxProvider', preferredProvider);
-        }}>
+        <label for="provider-select" class="block mb-1 text-base font-bold"
+          >Provider:</label
+        >
+        <select
+          id="provider-select"
+          class="w-full border border-gray-500 p-2 text-base bg-white text-black"
+          bind:value={preferredProvider}
+          onchange={() => {
+            settingsManager.setSetting(
+              "preferredFluxProvider",
+              preferredProvider,
+            );
+          }}
+        >
           {#each fluxApiManager.getAvailableProviders() as provider}
             <option value={provider.id} disabled={!provider.available}>
-              {provider.name} {provider.available ? '✅' : '❌'}
+              {provider.name}
+              {provider.available ? "✅" : "❌"}
             </option>
           {/each}
         </select>
         <p class="text-xs text-gray-600 mt-1">
-          Current: {preferredProvider === 'fal' ? 'FAL.AI' : 'BlackForest Labs'}
+          Current: {preferredProvider === "fal" ? "FAL.AI" : "BlackForest Labs"}
           {#if fluxApiManager.getProviderStatus().fallbackAvailable}
             (with fallback)
           {/if}
@@ -898,8 +1026,14 @@
       </div>
 
       <div>
-        <label for="aspect-ratio" class="block mb-1 text-base font-bold">Aspect Ratio:</label>
-        <select id="aspect-ratio" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={aspectRatio}>
+        <label for="aspect-ratio" class="block mb-1 text-base font-bold"
+          >Aspect Ratio:</label
+        >
+        <select
+          id="aspect-ratio"
+          class="w-full border border-gray-500 p-2 text-base bg-white text-black"
+          bind:value={aspectRatio}
+        >
           {#each aspectRatios as ratio}
             <option value={ratio}>{ratio}</option>
           {/each}
@@ -907,8 +1041,14 @@
       </div>
 
       <div>
-        <label for="output-format" class="block mb-1 text-base font-bold">Format:</label>
-        <select id="output-format" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={outputFormat}>
+        <label for="output-format" class="block mb-1 text-base font-bold"
+          >Format:</label
+        >
+        <select
+          id="output-format"
+          class="w-full border border-gray-500 p-2 text-base bg-white text-black"
+          bind:value={outputFormat}
+        >
           {#each outputFormats as format}
             <option value={format}>{format.toUpperCase()}</option>
           {/each}
@@ -916,13 +1056,27 @@
       </div>
 
       <div>
-        <label for="seed" class="block mb-1 text-base font-bold">Seed (optional):</label>
-        <input id="seed" type="number" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={seed} placeholder="Random" />
+        <label for="seed" class="block mb-1 text-base font-bold"
+          >Seed (optional):</label
+        >
+        <input
+          id="seed"
+          type="number"
+          class="w-full border border-gray-500 p-2 text-base bg-white text-black"
+          bind:value={seed}
+          placeholder="Random"
+        />
       </div>
 
       <div>
-        <label for="safety-tolerance" class="block mb-1 text-base font-bold">Safety Level:</label>
-        <select id="safety-tolerance" class="w-full border border-gray-500 p-2 text-base bg-white text-black" bind:value={safetyTolerance}>
+        <label for="safety-tolerance" class="block mb-1 text-base font-bold"
+          >Safety Level:</label
+        >
+        <select
+          id="safety-tolerance"
+          class="w-full border border-gray-500 p-2 text-base bg-white text-black"
+          bind:value={safetyTolerance}
+        >
           {#each safetyTolerances as tolerance}
             <option value={tolerance}>{tolerance}</option>
           {/each}
@@ -931,7 +1085,11 @@
 
       <div class="flex items-center">
         <label class="flex items-center text-base font-bold">
-          <input type="checkbox" class="mr-2" bind:checked={enableSafetyChecker} />
+          <input
+            type="checkbox"
+            class="mr-2"
+            bind:checked={enableSafetyChecker}
+          />
           Safety Checker
         </label>
       </div>
@@ -944,6 +1102,7 @@
       </div>
     </div>
 
+
     <div class="flex gap-2 mt-4 items-center">
       <button
         class="px-4 py-2 border border-gray-400 bg-gray-300 text-black text-lg font-bold cursor-pointer font-sans disabled:bg-gray-400 disabled:text-gray-500 disabled:cursor-not-allowed btn-outset"
@@ -954,21 +1113,30 @@
       </button>
 
       {#if generatedImage}
-        <button class="px-3 py-2 border border-gray-400 bg-gray-300 text-black text-lg cursor-pointer font-sans btn-outset" onclick={downloadImage}>Download</button>
+        <button
+          class="px-3 py-2 border border-gray-400 bg-gray-300 text-black text-lg cursor-pointer font-sans btn-outset"
+          onclick={downloadImage}>Download</button
+        >
       {/if}
     </div>
   </div>
 
   {#if error}
-    <div class="p-3 bg-red-100 border border-red-600 text-red-600 text-lg mx-3 my-2">
+    <div
+      class="p-3 bg-red-100 border border-red-600 text-red-600 text-lg mx-3 my-2"
+    >
       ⚠️ {error}
     </div>
   {/if}
 
   {#if isGenerating}
     <div class="flex flex-col items-center p-6 text-center">
-      <div class="w-10 h-10 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin mb-3"></div>
-      <p class="m-0 text-lg text-black">Generating your image... This may take a moment.</p>
+      <div
+        class="w-10 h-10 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin mb-3"
+      ></div>
+      <p class="m-0 text-lg text-black">
+        Generating your image... This may take a moment.
+      </p>
     </div>
   {/if}
 
@@ -977,10 +1145,19 @@
       <div class="p-4 text-center flex items-center justify-center">
         <button
           class="border-0 p-0 bg-transparent cursor-pointer"
-          onclick={() => generatedImage && imageManager.previewImage(generatedImage, { prompt, title: "Generated Image" })}
+          onclick={() =>
+            generatedImage &&
+            imageManager.previewImage(generatedImage, {
+              prompt,
+              title: "Generated Image",
+            })}
           title="Click to view full size"
         >
-          <img src={generatedImage} alt="" class="max-w-full max-h-75 border border-gray-500 shadow-lg bg-white hover:opacity-90 transition-opacity" />
+          <img
+            src={generatedImage}
+            alt=""
+            class="max-w-full max-h-75 border border-gray-500 shadow-lg bg-white hover:opacity-90 transition-opacity"
+          />
         </button>
       </div>
     {/if}

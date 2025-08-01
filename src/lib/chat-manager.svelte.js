@@ -7,6 +7,7 @@ import ImageGalleryController from '$lib/windows/image-gallery/ImageGalleryContr
 import VideoGalleryController from '$lib/windows/video-gallery/VideoGalleryController.js';
 import SettingsController from '$lib/windows/settings/SettingsController.svelte.js';
 import NotepadController from '$lib/windows/notepad/NotepadController.svelte.js';
+import LoRAStudioController from '$lib/windows/lora-studio/LoRAStudioController.svelte.js';
 
 /** 
  * @typedef {'user' | 'assistant' | 'system'} ChatRole
@@ -137,6 +138,19 @@ const availableTools = {
     execute: () => {
       NotepadController.openNotepadWindow();
       return 'Opened notepad';
+    }
+  },
+  open_lora_studio: {
+    name: 'open_lora_studio',
+    description: 'Open LoRA Studio for image editing with LoRA adaptations',
+    parameters: {
+      type: 'object',
+      properties: {},
+      required: []
+    },
+    execute: () => {
+      LoRAStudioController.openLoRAStudioWindow();
+      return 'Opened LoRA Studio';
     }
   }
 };
